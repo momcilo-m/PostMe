@@ -1,0 +1,7 @@
+<resources>
+    <string name="app_name">PostMe</string>
+    <string name="title_activity_login">Login</string>
+    <string name="title_activity_register">Register</string>
+    <string name="map_id">3373fb5d8ce72adeb7c0cd49</string>
+
+</resources>

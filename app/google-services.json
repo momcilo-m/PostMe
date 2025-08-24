@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "75781958651",
+    "project_id": "postme-c46da",
+    "storage_bucket": "postme-c46da.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:75781958651:android:267c7df5ccffdddd1cf95e",
+        "android_client_info": {
+          "package_name": "com.momcilo.postme"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCvBqNp4CygZlhC2R75C3KwWE_zpV6pe3I"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
