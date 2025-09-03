@@ -28,11 +28,12 @@ import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.momcilo.postme.data.NavItem
 import com.momcilo.postme.data.states.AuthState
+import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
 import com.momcilo.postme.ui.viewModels.UserViewModel
 
 @Composable
-fun Main(vm: UserViewModel,locVm: MapViewModel)
+fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel)
 {
     val navController = rememberNavController();
     val state = vm.authState.collectAsState()
@@ -70,7 +71,7 @@ fun Main(vm: UserViewModel,locVm: MapViewModel)
 
         }
     ) { innerPadding->
-        NavHostComposable(navController,"loading",innerPadding,vm,locVm)
+        NavHostComposable(navController,"loading",innerPadding,vm,locVm,lVm)
     }
 }
 
@@ -120,7 +121,8 @@ fun NavHostComposable(
     start: String,
     padding: PaddingValues,
     vm: UserViewModel,
-    locVm: MapViewModel
+    locVm: MapViewModel,
+    lVm: LocationViewModel
 ) {
     NavHost(
         navController,
@@ -131,6 +133,6 @@ fun NavHostComposable(
         composable("home") { HomeScreen() }
         composable("register") { RegisterScreen(userViewModel = vm) }
         composable("loading") { LoadingScreen() }
-        composable("map") { MapScreen(locVm) }
+        composable("map") { MapScreen(locVm,lVm) }
     }
 }

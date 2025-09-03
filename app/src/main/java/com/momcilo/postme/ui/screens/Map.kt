@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import android.graphics.Color
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -44,16 +45,18 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
 import com.momcilo.postme.data.entities.Marker
+import com.momcilo.postme.data.entities.Position
+import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
 
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(locVM: MapViewModel)
+fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
 {
     //Start location
-    val lat = locVM.location.value?.latitude ?: 42.0;
-    val lng = locVM.location.value?.longitude ?: 42.0;
+    val lat = lVm.location.value?.latitude ?: 42.0;
+    val lng = lVm.location.value?.longitude ?: 42.0;
 
     //Map settings
     val cameraPositionState = rememberCameraPositionState() { position = CameraPosition.fromLatLngZoom(LatLng(lat,lng), 100f) }
@@ -65,65 +68,85 @@ fun MapScreen(locVM: MapViewModel)
     //Dialog and Marker state
     var showDialog by remember { mutableStateOf(false) }
     var showPickLocation by remember { mutableStateOf(false) }
-    var markerLocation by remember {mutableStateOf(LatLng(15.0,14.0))}
+    var markerLocation by remember {mutableStateOf(Position(0.0,0.0))}
 
     var tempLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
-    GoogleMap(
-        modifier = Modifier.fillMaxSize(),
-        cameraPositionState = cameraPositionState,
-        properties = properties,
-        uiSettings = uiSettings,
-        onMapClick = { click->
-            if(showPickLocation)
-            {
-                locVM.address.value = "${click.latitude} ${click.longitude}"
-                tempLocation = LatLng(click.latitude,click.longitude)
-            }
-        },
-        onMapLongClick = {click->
-            markerLocation = LatLng(click.latitude, click.longitude)
-            showDialog = true
-            tempLocation = LatLng(0.0,0.0)
-        }
-    )
+    Box(modifier = Modifier.fillMaxSize())
     {
-        if(!showPickLocation)
-            locVM.markers.forEach {marker->
-                MarkerInfoWindowContent(
-                    state = MarkerState(position = marker.position),
-                    title = marker.title,
-                )
+        GoogleMap(
+            modifier = Modifier.fillMaxSize(),
+            cameraPositionState = cameraPositionState,
+            properties = properties,
+            uiSettings = uiSettings,
+            onMapClick = { click->
+                if(showPickLocation)
                 {
-                    Text( "Korisnik ${marker.title} je postavio ovu porudzbinu. Adresa dostave je ${marker.address}")
+                    locVM.address.value = "${click.latitude} ${click.longitude}"
+                    tempLocation = LatLng(click.latitude,click.longitude)
                 }
+            },
+            onMapLongClick = {click->
+                markerLocation = Position(click.latitude, click.longitude)
+                showDialog = true
+                tempLocation = LatLng(0.0,0.0)
             }
+        )
+        {
+            if(!showPickLocation)
+                locVM.markers.forEach {marker->
+                    MarkerInfoWindowContent(
+                        state = MarkerState(position = marker.position.toLatLng()),
+                        title = marker.title,
+                        onInfoWindowLongClick =
+                            {
+                                locVM.takeDelivery(marker.id)
+                            }
+                    )
+                    {
+                        Column {
+                            Text( "Korisnik ${marker.user} je postavio ovu porudzbinu. Adresa dostave je ${marker.address}")
+                        }
 
-        if(showPickLocation)
-            Marker(
-                state = MarkerState(position = tempLocation)
-            )
+                    }
+                }
+
+            if(showPickLocation)
+                Marker(
+                    state = MarkerState(position = tempLocation)
+                )
+        }
+
+        if(showDialog) AddMarker(
+            onDismiss = { showDialog = false },
+            onCreate = { name: String, address: String, desc: String ->
+                locVM.addMarker(
+                    name,
+                    address,
+                    desc,
+                    markerLocation
+                ); showDialog = false
+            },
+            addAddress = {showDialog=false; showPickLocation=true},
+            title = locVM.title,
+            address = locVM.address,
+            description = locVM.description
+        )
+
+        if(showPickLocation) PickLocation(
+            onClick = {showPickLocation=false;showDialog=true}
+        )
+
+        Button(
+            onClick = {  },
+            modifier = Modifier
+                .align(Alignment.BottomStart)
+        ) {
+            Text("Center Map")
+        }
     }
 
-    if(showDialog) AddMarker(
-        onDismiss = { showDialog = false },
-        onCreate = { n: String, a: String, d: String ->
-            locVM.addMarker(
-                n,
-                a,
-                d,
-                markerLocation
-            ); showDialog = false
-        },
-        addAddress = {showDialog=false; showPickLocation=true},
-        title = locVM.title,
-        address = locVM.address,
-        description = locVM.description
-    )
 
-    if(showPickLocation) PickLocation(
-        onClick = {showPickLocation=false;showDialog=true}
-    )
 }
 
 @Composable

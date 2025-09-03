@@ -4,13 +4,14 @@ import com.google.android.gms.maps.model.LatLng
 
 data class Marker(
     //Kada korisnik kreira
-    var id: String="",
     var user: String = "",
     val title: String = "",
     val address: String = "",
     val description: String ="",
-    val position:LatLng = LatLng(15.0,14.0),
+    val position: Position = Position(),
 
+    var id:String="",
     val status : String = "Pending",
-    val delivered: String = "",
+    val deliverer: String = "",
 )
+

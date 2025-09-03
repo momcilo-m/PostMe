@@ -9,6 +9,7 @@ import com.google.firebase.database.FirebaseDatabase
 import com.google.firebase.database.getValue
 import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.tasks.await
+import android.location.Location
 
 
 class UserRepository(
@@ -28,6 +29,21 @@ class UserRepository(
         {
             Result.failure(e)
         }
+    }
+
+    suspend fun sendLoaction(loc:Location)
+    {
+        val userId = auth.currentUser?.uid ?: return
+
+        val userRef = db.child("users").child(userId)
+
+        val locationMap = mapOf(
+            "latitude" to loc.latitude,
+            "longitude" to loc.longitude
+        )
+
+        // Postavi lokaciju pod korisnika
+        userRef.child("location").setValue(locationMap).await()
     }
 
     suspend fun loginUserWithEmail(email: String, password: String): Result<User> {

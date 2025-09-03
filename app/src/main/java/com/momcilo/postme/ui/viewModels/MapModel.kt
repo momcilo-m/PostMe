@@ -17,28 +17,62 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import androidx.lifecycle.viewModelScope
 import com.google.android.gms.location.LocationListener
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
 import com.google.android.gms.maps.model.LatLng
 import com.momcilo.postme.data.entities.Marker
+import com.momcilo.postme.data.entities.Position
+import com.momcilo.postme.data.repositories.DeliveryRepository
+import kotlinx.coroutines.launch
 
-class MapViewModel(app: ComponentActivity): ViewModel()
+class MapViewModel(private val repository: DeliveryRepository): ViewModel()
 {
-    private val _location  = MutableLiveData<Location>()
-    val location: LiveData<Location> = _location
 
     private val _markers =mutableStateListOf<Marker>()
     val markers : List<Marker> = _markers;
 
-    fun addMarker(name: String,address: String, description: String,location: LatLng)
+    fun addMarker(name: String,address: String, description: String,location: Position)
     {
-        _markers.add(Marker("me",name, address,description,location))
-        _title.value = ""
-        _address.value=""
-        _description.value=""
+        viewModelScope.launch {
+            val res = repository.createDelivery(Marker("me",name, address,description, location))
+
+            res.onSuccess {
+                marker -> _markers.add(Marker("me",name, address,description, location));
+            }
+        }
     }
+
+    init {
+        viewModelScope.launch {
+            val res = repository.loadDeliveries();
+            res.onSuccess {result->
+                _markers.clear()
+                _markers.addAll(result)
+            }
+            res.onFailure {fail->
+                Log.d("MARKERI",fail.localizedMessage ?: fail.toString());
+            }
+        }
+    }
+
+    fun takeDelivery(id: String)
+    {
+        viewModelScope.launch {
+            val res = repository.takeDelivery(id);
+
+            res.onSuccess { res->
+
+            }
+
+            res.onFailure {
+                e-> Log.d("MARKERI",e.localizedMessage ?: e.toString())
+            }
+        }
+    }
+
 
     //Dodavanje markera
     private val _title = mutableStateOf<String>("")
@@ -49,67 +83,17 @@ class MapViewModel(app: ComponentActivity): ViewModel()
 
     private val _description = mutableStateOf<String>("")
     val description: MutableState<String> = _description
-
-    //Funkcije za rad sa lokacijom i dozvolama
-
-    //Provider za prikupljanje lokacije
-    private var fusedLocationClient = LocationServices.getFusedLocationProviderClient(app)
-
-    private var locationRequest = LocationRequest.Builder(
-        Priority.PRIORITY_HIGH_ACCURACY,
-        5000L
-    ).setMinUpdateIntervalMillis(2000L)
-    .build()
-
-    private lateinit var locationListener: LocationListener
-
-    @SuppressLint("MissingPermission")
-    fun initLocation() {
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location ->
-                if (location != null) {
-                    _location.value = location
-                } else {
-                    Log.d("LOCATION", "Lokacija nije dostupna")
-                }
-            }
-    }
-
-    @RequiresPermission(allOf = [Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION])
-    fun startActiveLocation()
-    {
-        locationListener = object : LocationListener
-        {
-            override fun onLocationChanged(loc: Location) {
-                _location.value = loc;
-                Log.d("LOCATION", "Lat: ${loc.latitude}, Lng: ${loc.longitude}")
-            }
-        }
-
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationListener,
-            Looper.getMainLooper()
-        )
-    }
-
-    fun stopActiveLocation()
-    {
-        locationListener.let {
-            fusedLocationClient.removeLocationUpdates(it)
-        }
-    }
 }
 
 
-class LocationViewModelFactory(private val app: ComponentActivity): ViewModelProvider.Factory
+class MapViewModelFactory(private val repository: DeliveryRepository): ViewModelProvider.Factory
 {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 
         @Suppress("UNCHECKED_CAST")
         if(modelClass.isAssignableFrom(MapViewModel::class.java))
         {
-            return MapViewModel(app) as T;
+            return MapViewModel(repository) as T;
         }
         throw IllegalArgumentException("Unknown ViewModel")
     }
