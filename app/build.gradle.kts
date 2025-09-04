@@ -73,6 +73,9 @@ dependencies {
     implementation("com.google.firebase:firebase-auth-ktx")
     implementation("com.google.firebase:firebase-database-ktx")
     implementation ("com.google.firebase:firebase-firestore-ktx:24.10.0")
+    implementation ("com.firebase:geofire-android-common:3.2.0")
+    implementation ("com.firebase:geofire-android:3.1.0")
+
 
     // Navigation
     val nav_version = "2.9.3"

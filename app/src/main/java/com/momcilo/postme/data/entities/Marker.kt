@@ -6,7 +6,7 @@ data class Marker(
     //Kada korisnik kreira
     var user: String = "",
     val title: String = "",
-    val address: String = "",
+    val address: Position = Position(),
     val description: String ="",
     val position: Position = Position(),
 

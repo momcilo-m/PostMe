@@ -34,7 +34,7 @@ class MapViewModel(private val repository: DeliveryRepository): ViewModel()
     private val _markers =mutableStateListOf<Marker>()
     val markers : List<Marker> = _markers;
 
-    fun addMarker(name: String,address: String, description: String,location: Position)
+    fun addMarker(name: String,address: Position, description: String,location: Position)
     {
         viewModelScope.launch {
             val res = repository.createDelivery(Marker("me",name, address,description, location))
@@ -73,16 +73,40 @@ class MapViewModel(private val repository: DeliveryRepository): ViewModel()
         }
     }
 
+    fun loadDeliveryWithFilter(user:String,radius: String, status: String)
+    {
+        viewModelScope.launch {
+            val res = repository.loadFilteredDeliveries(user,radius,status);
+            _markers.clear()
+            _markers.addAll(res);
+        }
+    }
+
 
     //Dodavanje markera
     private val _title = mutableStateOf<String>("")
     val title: MutableState<String> = _title
 
-    private val _address = mutableStateOf<String>("")
-    val address: MutableState<String> = _address
+    private val _address = mutableStateOf(Position(0.0, 0.0))
+    val address: MutableState<Position> = _address
 
     private val _description = mutableStateOf<String>("")
     val description: MutableState<String> = _description
+
+
+
+    //Filter map
+    private val _filterUser = mutableStateOf<String>("");
+    val filterUser :MutableState<String> = _filterUser;
+
+    private val _filterRadius = mutableStateOf<String>("");
+    val filterRadius :MutableState<String> = _filterRadius;
+
+    private val _filterStatus = mutableStateOf<String>("");
+    val filterStatus :MutableState<String> = _filterStatus;
+
+    private val _filterDistance = mutableStateOf<String>("");
+    val filterDistance :MutableState<String> = _filterDistance;
 }
 
 

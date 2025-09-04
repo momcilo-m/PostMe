@@ -1,4 +1,4 @@
-package com.momcilo.postme.data
+package com.momcilo.postme.data.entities
 
 import androidx.compose.ui.graphics.vector.ImageVector
 

@@ -2,6 +2,7 @@ package com.momcilo.postme.ui.screens
 
 import android.annotation.SuppressLint
 import android.graphics.Color
+import android.graphics.Point
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -55,8 +56,8 @@ import com.momcilo.postme.ui.viewModels.MapViewModel
 fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
 {
     //Start location
-    val lat = lVm.location.value?.latitude ?: 42.0;
-    val lng = lVm.location.value?.longitude ?: 42.0;
+    val lat = lVm.location.value?.latitude ?: 0.0;
+    val lng = lVm.location.value?.longitude ?: 0.0;
 
     //Map settings
     val cameraPositionState = rememberCameraPositionState() { position = CameraPosition.fromLatLngZoom(LatLng(lat,lng), 100f) }
@@ -68,6 +69,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
     //Dialog and Marker state
     var showDialog by remember { mutableStateOf(false) }
     var showPickLocation by remember { mutableStateOf(false) }
+    var showFilter by remember {mutableStateOf(false)}
     var markerLocation by remember {mutableStateOf(Position(0.0,0.0))}
 
     var tempLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
@@ -82,7 +84,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
             onMapClick = { click->
                 if(showPickLocation)
                 {
-                    locVM.address.value = "${click.latitude} ${click.longitude}"
+                    locVM.address.value = Position(click.latitude,click.longitude)
                     tempLocation = LatLng(click.latitude,click.longitude)
                 }
             },
@@ -105,7 +107,11 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
                     )
                     {
                         Column {
-                            Text( "Korisnik ${marker.user} je postavio ovu porudzbinu. Adresa dostave je ${marker.address}")
+                            Text( "Korisnik ${marker.user} je postavio ovu porudzbinu")
+                            Button(onClick = {})
+                            {
+                                Text("Lociraj Dostavu")
+                            }
                         }
 
                     }
@@ -119,7 +125,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
 
         if(showDialog) AddMarker(
             onDismiss = { showDialog = false },
-            onCreate = { name: String, address: String, desc: String ->
+            onCreate = { name: String, address: Position, desc: String ->
                 locVM.addMarker(
                     name,
                     address,
@@ -137,26 +143,41 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
             onClick = {showPickLocation=false;showDialog=true}
         )
 
-        Button(
-            onClick = {  },
-            modifier = Modifier
-                .align(Alignment.BottomStart)
-        ) {
-            Text("Center Map")
-        }
+        if(!showFilter)
+            Button(
+                onClick = {
+                    showFilter = true
+                },
+                modifier = Modifier
+                    .align(Alignment.BottomStart)
+            ) {
+                Text("Filter Map")
+            }
+
+        if(showFilter)
+            FilterMap(
+                username = locVM.filterUser,
+                radius = locVM.filterRadius,
+                status = locVM.filterStatus,
+                filter = {
+                    locVM.loadDeliveryWithFilter(locVM.filterUser.value,locVM.filterRadius.value,locVM.filterStatus.value);
+                    showFilter = false;
+                }
+            )
     }
 
 
 }
 
+//Dialog for add Delivery
 @Composable
 fun AddMarker(
     onDismiss:()-> Unit,
-    onCreate:(String, String, String)->Unit,
+    onCreate:(String, Position, String)->Unit,
     addAddress:()->Unit,
 
     title: MutableState<String>,
-    address: MutableState<String>,
+    address: MutableState<Position>,
     description: MutableState<String>
 )
 {
@@ -174,9 +195,18 @@ fun AddMarker(
                 )
                 Spacer(modifier = Modifier.height(8.dp))
                 OutlinedTextField(
-                    value = address.value,
-                    onValueChange = { address.value = it },
-                    label = { Text("Address in LatLng or Textual") },
+                    value = "${address.value.latitude}, ${address.value.longitude}",
+                    onValueChange = { input ->
+                        val parts = input.split(",")
+                        if (parts.size == 2) {
+                            val lat = parts[0].trim().toDoubleOrNull()
+                            val lng = parts[1].trim().toDoubleOrNull()
+                            if (lat != null && lng != null) {
+                                address.value = Position(lat, lng)
+                            }
+                        }
+                    },
+                    label = { Text("Address (Lat, Lng)") },
                     singleLine = true
                 )
                 Button(onClick = addAddress)
@@ -193,7 +223,7 @@ fun AddMarker(
             }
         },
         confirmButton = {
-            Button(onClick = { onCreate(title.value,description.value,address.value) }) {
+            Button(onClick = { onCreate(title.value,address.value,description.value,) }) {
                 Text("Create")
             }
         },
@@ -205,6 +235,7 @@ fun AddMarker(
     )
 }
 
+//Dialog for destination address Delivery
 @Composable
 fun PickLocation(
    onClick:()->Unit
@@ -218,6 +249,44 @@ fun PickLocation(
         }
         Button(onClick) {
             Text("Cancel")
+        }
+    }
+}
+
+//Dialog for map filter
+
+@Composable
+fun FilterMap(
+    username: MutableState<String>,
+    radius: MutableState<String>,
+    status: MutableState<String>,
+    filter:()->Unit
+)
+{
+    Column {
+        OutlinedTextField(
+            value = username.value,
+            onValueChange = { username.value = it },
+            label = { Text("Username") },
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = radius.value,
+            onValueChange = { radius.value = it },
+            label = { Text("Radius") },
+            singleLine = true
+        )
+
+        OutlinedTextField(
+            value = status.value,
+            onValueChange = { status.value = it },
+            label = { Text("Status") },
+            singleLine = true
+        )
+
+        Button(onClick = filter) {
+            Text("Filter")
         }
     }
 }
