@@ -3,22 +3,35 @@ package com.momcilo.postme.data.repositories
 import android.util.Log
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
+//import com.firebase.geofire.GeoQueryDataEventListener
 import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DataSnapshot
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
+import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.momcilo.postme.data.entities.GeoListener
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import kotlinx.coroutines.tasks.await
+import org.imperiumlabs.geofirestore.GeoFirestore
+import org.imperiumlabs.geofirestore.listeners.GeoQueryDataEventListener
 import kotlin.Result
+
 
 class DeliveryRepository(
     private val auth: FirebaseAuth,
-    private val db: FirebaseFirestore
+    private val db: FirebaseFirestore,
 )
 {
+    private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("ref"))
+    private val userLocation = GeoPoint(37.4219983,-122.084)
+    private val geoQuery = geoFireStore.queryAtLocation(userLocation, 1.0)
+
     suspend fun createDelivery(delivery: Marker): Result<Boolean>
     {
         return try{
@@ -35,9 +48,12 @@ class DeliveryRepository(
             var hsh = GeoFireUtils.getGeoHashForLocation(loc)
             delivery.address.hash = hsh;
 
+
             loc = GeoLocation(delivery.position.latitude,delivery.position.longitude)
             hsh = GeoFireUtils.getGeoHashForLocation(loc)
             delivery.position.hash = hsh;
+            delivery.g = hsh;
+            delivery.l = GeoPoint(delivery.position.latitude, delivery.position.longitude)
 
 
             db.collection("delivery").add(delivery)
@@ -93,7 +109,7 @@ class DeliveryRepository(
 
     }
 
-
+    //Init
     suspend fun loadDeliveries():Result<List<Marker>>
     {
         return try {
@@ -107,7 +123,7 @@ class DeliveryRepository(
         }
     }
 
-
+    //Filter
     suspend fun loadFilteredDeliveries(
         user: String?,
         radius:String?,
@@ -158,6 +174,50 @@ class DeliveryRepository(
 
 
         return res.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
+    }
+
+
+    fun startGeoQuery(onNewObject: (DocumentSnapshot) -> Unit)
+    {
+        geoQuery.addGeoQueryDataEventListener(object : GeoQueryDataEventListener {
+            override fun onDocumentChanged(
+                documentSnapshot: DocumentSnapshot,
+                location: GeoPoint
+            ) {
+                Log.d("HAKUNA","PROMENA");
+            }
+
+            override fun onDocumentEntered(
+                documentSnapshot: DocumentSnapshot,
+                location: GeoPoint
+            ) {
+                Log.d("HAKUNA","MATATA");
+            }
+
+            override fun onDocumentExited(documentSnapshot: DocumentSnapshot) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onDocumentMoved(
+                documentSnapshot: DocumentSnapshot,
+                location: GeoPoint
+            ) {
+                TODO("Not yet implemented")
+            }
+
+            override fun onGeoQueryError(exception: Exception) {
+                Log.d("HAKUNA","GRESKA MAKAR");
+            }
+
+            override fun onGeoQueryReady() {
+                Log.d("HAKUNA","KRECEMO");
+            }
+
+        })
+    }
+
+    fun updateQueryCenter(newLocation: GeoPoint) {
+        geoQuery?.center = newLocation
     }
 
 //    suspend fun finishDelivery(): Result<Boolean>

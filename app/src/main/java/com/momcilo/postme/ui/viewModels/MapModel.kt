@@ -37,7 +37,7 @@ class MapViewModel(private val repository: DeliveryRepository): ViewModel()
     fun addMarker(name: String,address: Position, description: String,location: Position)
     {
         viewModelScope.launch {
-            val res = repository.createDelivery(Marker("me",name, address,description, location))
+            val res = repository.createDelivery(Marker("me",name, address,description,location))
 
             res.onSuccess {
                 marker -> _markers.add(Marker("me",name, address,description, location));
@@ -54,6 +54,10 @@ class MapViewModel(private val repository: DeliveryRepository): ViewModel()
             }
             res.onFailure {fail->
                 Log.d("MARKERI",fail.localizedMessage ?: fail.toString());
+            }
+
+            repository.startGeoQuery {
+                Log.d("HAKUNA","MATATATA");
             }
         }
     }

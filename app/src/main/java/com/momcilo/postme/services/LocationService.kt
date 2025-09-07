@@ -19,14 +19,15 @@ import com.google.android.gms.location.LocationListener
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.firebase.firestore.GeoPoint
 import com.momcilo.postme.R
 import com.momcilo.postme.activities.PostMeApplication
+import com.momcilo.postme.data.repositories.DeliveryRepository
 import com.momcilo.postme.data.repositories.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
-import kotlin.getValue
 
 
 class LocationService : Service()
@@ -36,6 +37,7 @@ class LocationService : Service()
     private lateinit var locationListener: LocationListener
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
     private lateinit var repository: UserRepository
+    private lateinit var deliveryRepository: DeliveryRepository
 
     //Not Bind
     override fun onBind(p0: Intent?): IBinder? {
@@ -46,6 +48,7 @@ class LocationService : Service()
         super.onCreate()
 
         repository = (application as PostMeApplication).userRepo
+        deliveryRepository = (application as PostMeApplication).deliveryRepo
 
         fusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
 
@@ -96,13 +99,14 @@ class LocationService : Service()
 
     @SuppressLint("MissingPermission")
     private fun startTrack() {
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        //val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         locationListener = object : LocationListener
         {
             override fun onLocationChanged(loc: Location) {
                 Log.d("LOCATION", "Lat: ${loc.latitude}, Lng: ${loc.longitude}")
                 sendLocation(loc);
+                deliveryRepository.updateQueryCenter(GeoPoint(loc.latitude,loc.longitude))
             }
         }
 
@@ -112,7 +116,6 @@ class LocationService : Service()
             Looper.getMainLooper()
         )
     }
-
 
     private fun stopTracking() {
         if (::locationListener.isInitialized) {
@@ -125,6 +128,11 @@ class LocationService : Service()
     override fun onDestroy() {
         super.onDestroy()
         stopTracking()
+    }
+
+    private fun checkNearby(loc: Location)
+    {
+
     }
 
 

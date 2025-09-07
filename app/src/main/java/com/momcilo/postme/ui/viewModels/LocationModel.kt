@@ -38,7 +38,6 @@ class LocationViewModel(val app: ComponentActivity): ViewModel()
                 }
             }
     }
-
 }
 
 
