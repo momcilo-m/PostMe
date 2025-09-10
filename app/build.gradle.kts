@@ -28,6 +28,30 @@ android {
             useSupportLibrary = true
         }
     }
+
+    signingConfigs {
+        create("release") {
+            storeFile = file("C:\\Users\\User\\Documents\\keystore\\my-release-key.jks")
+            storePassword = "h4rd p44s5w0rd"
+            keyAlias = "my-key-alias"
+            keyPassword = "h4rd p44s5w0rd"
+        }
+    }
+
+    buildTypes {
+        getByName("release") {
+            signingConfig = signingConfigs.getByName("release")
+            isMinifyEnabled = false // ili true ako želiš proguard/r8
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
+        }
+        getByName("debug") {
+            // debug build koristi default debug keystore, obično nije potrebno dodavati
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -68,6 +92,10 @@ dependencies {
     debugImplementation(libs.androidx.ui.tooling)
     debugImplementation(libs.androidx.ui.test.manifest)
 
+    //Slike
+    implementation("io.coil-kt:coil-compose:2.6.0")
+
+
     // Firebase
     implementation(platform("com.google.firebase:firebase-bom:32.7.0"))
     implementation("com.google.firebase:firebase-auth-ktx")
@@ -88,6 +116,5 @@ dependencies {
     //Google Maps
     implementation("com.google.maps.android:maps-compose:4.4.1")
     implementation ("com.google.android.gms:play-services-maps:18.2.0")
-    //implementation ("com.google.android.gms:play-serviceslocation:21.2.0")
 
 }

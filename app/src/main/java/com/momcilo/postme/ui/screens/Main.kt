@@ -129,8 +129,9 @@ fun NavHostComposable(
         startDestination = start,
         modifier = Modifier.padding(padding)
     ) {
-        composable("login") { LoginScreen(vm) }
+        composable("login") { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
         composable("home") { HomeScreen() }
+        composable("profile") { ProfileScreen(vm) }
         composable("register") { RegisterScreen(userViewModel = vm) }
         composable("loading") { LoadingScreen() }
         composable("map") { MapScreen(locVm,lVm) }

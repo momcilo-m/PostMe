@@ -31,7 +31,7 @@ class UserRepository(
         }
     }
 
-    suspend fun sendLoaction(loc:Location)
+    suspend fun sendLocation(loc:Location)
     {
         val userId = auth.currentUser?.uid ?: return
 
@@ -72,6 +72,18 @@ class UserRepository(
         }
     }
 
+    fun logout(): Result<Boolean>
+    {
+        return try {
+            auth.signOut();
+            Result.success(true);
+        }
+        catch (e: Exception)
+        {
+            Result.failure(e);
+        }
+
+    }
 
     private fun convertResponse(user: DataSnapshot): User
     {

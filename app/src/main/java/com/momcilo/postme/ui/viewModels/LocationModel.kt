@@ -29,14 +29,27 @@ class LocationViewModel(val app: ComponentActivity): ViewModel()
 
     @SuppressLint("MissingPermission")
     fun initLocation() {
-        fusedLocationClient.lastLocation
-            .addOnSuccessListener { location ->
-                if (location != null) {
-                    _location.value = location
-                } else {
-                    Log.d("LOCATION", "Lokacija nije dostupna")
+
+        try {
+            fusedLocationClient.lastLocation
+                .addOnSuccessListener { location ->
+                    if (location != null) {
+                        _location.value = location
+                    } else {
+                        Log.d("LOCATION", "Lokacija nije dostupna")
+                    }
                 }
-            }
+                .addOnFailureListener { e ->
+                    Log.e("LOCATION", "Failed to get location", e)
+                }
+        }
+        catch (e: Exception)
+        {
+            Log.d("LOCATION",e.toString());
+        }
+
+
+
     }
 }
 

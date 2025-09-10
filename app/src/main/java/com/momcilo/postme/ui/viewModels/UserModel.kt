@@ -1,6 +1,8 @@
 package com.momcilo.postme.ui.viewModels
 
+import android.net.Uri
 import android.util.Log
+import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
@@ -20,6 +22,9 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var phone by mutableStateOf("")
+
+    private val _imageUri  = mutableStateOf<Uri?>(null)
+    val imageUri: MutableState<Uri?> = _imageUri;
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState
@@ -69,6 +74,18 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
             }
         }
     }
+
+    fun logout()
+    {
+        viewModelScope.launch {
+            val result = userRepo.logout();
+
+            result.onSuccess {
+                _authState.value = AuthState.Unauthenticated
+            }
+        }
+    }
+
 }
 
 class UserViewModelFactory(private val repository: UserRepository): ViewModelProvider.Factory

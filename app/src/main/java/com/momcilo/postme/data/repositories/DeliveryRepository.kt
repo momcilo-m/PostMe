@@ -1,6 +1,11 @@
 package com.momcilo.postme.data.repositories
 
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
+import android.os.Build
 import android.util.Log
+import androidx.core.app.NotificationCompat
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
 //import com.firebase.geofire.GeoQueryDataEventListener
@@ -14,6 +19,7 @@ import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
 import com.google.firebase.firestore.QuerySnapshot
+import com.momcilo.postme.R
 import com.momcilo.postme.data.entities.GeoListener
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
@@ -28,7 +34,7 @@ class DeliveryRepository(
     private val db: FirebaseFirestore,
 )
 {
-    private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("ref"))
+    private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("delivery"))
     private val userLocation = GeoPoint(37.4219983,-122.084)
     private val geoQuery = geoFireStore.queryAtLocation(userLocation, 1.0)
 
@@ -177,7 +183,9 @@ class DeliveryRepository(
     }
 
 
-    fun startGeoQuery(onNewObject: (DocumentSnapshot) -> Unit)
+    //Notifikacija kada je neko u blizini
+
+    fun startGeoQuery(onNewObject: (Marker) -> Unit)
     {
         geoQuery.addGeoQueryDataEventListener(object : GeoQueryDataEventListener {
             override fun onDocumentChanged(
@@ -192,10 +200,15 @@ class DeliveryRepository(
                 location: GeoPoint
             ) {
                 Log.d("HAKUNA","MATATA");
+                Log.d("HAKUNA", documentSnapshot.get("title").toString());
+                val marker = documentSnapshot.toObject(Marker::class.java)?.copy(id = documentSnapshot.id)
+
+                if(marker!=null)
+                    onNewObject(marker)
             }
 
             override fun onDocumentExited(documentSnapshot: DocumentSnapshot) {
-                TODO("Not yet implemented")
+                Log.d("HAKUNA","IZASO");
             }
 
             override fun onDocumentMoved(

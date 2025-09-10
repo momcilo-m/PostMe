@@ -74,8 +74,8 @@ class LocationService : Service()
 
 
         val notification = NotificationCompat.Builder(this, "locationservicechannel")
-            .setContentTitle("Tracking location…")
-            .setContentText("Location: unknown")
+            .setContentTitle("Tracking location")
+            .setContentText("Location are track and send to server")
             .setSmallIcon(R.drawable.ic_launcher_foreground)
             .setOngoing(true)
 
@@ -88,7 +88,7 @@ class LocationService : Service()
     {
         serviceScope.launch {
             try {
-                repository.sendLoaction(loc)
+                repository.sendLocation(loc)
             }
             catch (e: Exception)
             {
@@ -99,7 +99,6 @@ class LocationService : Service()
 
     @SuppressLint("MissingPermission")
     private fun startTrack() {
-        //val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
 
         locationListener = object : LocationListener
         {
