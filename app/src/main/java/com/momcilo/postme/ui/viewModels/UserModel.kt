@@ -29,12 +29,15 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
     val authState: StateFlow<AuthState> = _authState
 
+    var currentUser by mutableStateOf(User());
+
     init {
         viewModelScope.launch {
             val res = userRepo.isLoggedIn()
 
             res.onSuccess { user->
                 _authState.value = AuthState.Authenticated(user);
+                currentUser = user;
             }
 
             res.onFailure {

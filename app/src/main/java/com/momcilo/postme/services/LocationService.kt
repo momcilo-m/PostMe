@@ -1,11 +1,14 @@
 package com.momcilo.postme.services
 
+import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.app.Service
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
 import android.os.IBinder
@@ -13,6 +16,7 @@ import android.os.Looper
 import android.util.Log
 import androidx.annotation.RequiresPermission
 import androidx.core.app.NotificationCompat
+import androidx.core.content.ContextCompat
 import com.google.android.gms.location.FusedLocationProviderClient
 import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationListener
@@ -26,18 +30,21 @@ import com.momcilo.postme.data.repositories.DeliveryRepository
 import com.momcilo.postme.data.repositories.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
 
 class LocationService : Service()
 {
-    private lateinit var fusedLocationClient: FusedLocationProviderClient
-    private lateinit var locationRequest: LocationRequest
-    private lateinit var locationListener: LocationListener
+
     private val serviceScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
     private lateinit var repository: UserRepository
     private lateinit var deliveryRepository: DeliveryRepository
+    private lateinit var notificationManager: NotificationManager;
 
     //Not Bind
     override fun onBind(p0: Intent?): IBinder? {
@@ -46,93 +53,48 @@ class LocationService : Service()
 
     override fun onCreate() {
         super.onCreate()
-
         repository = (application as PostMeApplication).userRepo
         deliveryRepository = (application as PostMeApplication).deliveryRepo
-
-        fusedLocationClient = LocationServices.getFusedLocationProviderClient(applicationContext)
-
-        locationRequest = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            60_000L
-        ).setMinUpdateIntervalMillis(30_000L)
-            .build()
+        notificationManager = this.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        val channelId = "locationservicechannel"
+        sendLocationRoutine();
+        startForeground(1,createNotification(this, "Location are tracking","Location Tracking", "locationservicechannel"))
 
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "Location Service",
-                NotificationManager.IMPORTANCE_LOW
-            )
-            val manager = getSystemService(NotificationManager::class.java)
-            manager.createNotificationChannel(channel)
+        deliveryRepository.startGeoQuery {
+            sendNotification(this,"New delivery is near you","New Delivery","geo-document")
         }
 
-
-        val notification = NotificationCompat.Builder(this, "locationservicechannel")
-            .setContentTitle("Tracking location")
-            .setContentText("Location are track and send to server")
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setOngoing(true)
-
-        startForeground(1,notification.build())
-        startTrack();
         return START_STICKY
     }
 
-    private fun sendLocation(loc: Location)
+    private fun sendLocationRoutine()
     {
         serviceScope.launch {
-            try {
-                repository.sendLocation(loc)
-            }
-            catch (e: Exception)
-            {
-                Log.d("LOCATION",e.toString())
-            }
-        }
-    }
+            while (isActive) {
 
-    @SuppressLint("MissingPermission")
-    private fun startTrack() {
+                Log.d("SERVICELOC", "Salje se lokacija na srv")
+                repository.sendLocation(deliveryRepository.userLocation)
 
-        locationListener = object : LocationListener
-        {
-            override fun onLocationChanged(loc: Location) {
-                Log.d("LOCATION", "Lat: ${loc.latitude}, Lng: ${loc.longitude}")
-                sendLocation(loc);
-                deliveryRepository.updateQueryCenter(GeoPoint(loc.latitude,loc.longitude))
+                delay(60_000)
             }
         }
-
-        fusedLocationClient.requestLocationUpdates(
-            locationRequest,
-            locationListener,
-            Looper.getMainLooper()
-        )
     }
 
-    private fun stopTracking() {
-        if (::locationListener.isInitialized) {
-            fusedLocationClient.removeLocationUpdates(locationListener)
-        }
-        stopForeground(STOP_FOREGROUND_REMOVE)
-        stopSelf()
+    private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {
+
+        return NotificationCompat.Builder(context, channel)
+            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setAutoCancel(true)
+            .build()
     }
 
-    override fun onDestroy() {
-        super.onDestroy()
-        stopTracking()
+    private fun sendNotification(context: Context, message: String,title: String, channel:String) {
+        val notificationId = System.currentTimeMillis().toInt()
+        notificationManager.notify(notificationId, createNotification(context, message,title, channel))
     }
-
-    private fun checkNearby(loc: Location)
-    {
-
-    }
-
-
 }

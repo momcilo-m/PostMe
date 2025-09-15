@@ -13,8 +13,8 @@ fun ProfileScreen(
 {
 
     Column {
-        Text("Ime Prezime")
-        Text("momcilo@momcilo.rs")
+        Text(viewModel.currentUser.name)
+        Text(viewModel.currentUser.email)
         Button(onClick = {viewModel.logout()}) {
             Text("Logout!")
         }

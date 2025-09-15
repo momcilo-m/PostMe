@@ -1,8 +1,13 @@
 package com.momcilo.postme.ui.screens
 
 import android.annotation.SuppressLint
-import android.graphics.Color
+import android.content.Context
+import android.graphics.Bitmap
+import android.graphics.BitmapFactory
+import android.graphics.Canvas
 import android.graphics.Point
+import android.util.Log
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -12,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
@@ -20,47 +26,78 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.LocalContext
-import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.unit.dp
-import com.google.android.gms.maps.GoogleMapOptions
-import com.google.android.gms.maps.model.CameraPosition
+import androidx.core.content.ContextCompat
+import androidx.lifecycle.asFlow
+import com.google.android.gms.maps.CameraUpdateFactory
+import com.google.android.gms.maps.model.BitmapDescriptor
+import com.google.android.gms.maps.model.BitmapDescriptorFactory
 import com.google.android.gms.maps.model.LatLng
-import com.google.android.gms.maps.model.MapStyleOptions
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
 import com.google.maps.android.compose.MapType
 import com.google.maps.android.compose.MapUiSettings
 import com.google.maps.android.compose.Marker
-import com.google.maps.android.compose.MarkerInfoWindow
 import com.google.maps.android.compose.MarkerInfoWindowContent
 import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
-import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
+import kotlinx.coroutines.launch
 
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
+fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel,deliveryId:String)
 {
-    //Start location
-    val lat = lVm.location.value?.latitude ?: 0.0;
-    val lng = lVm.location.value?.longitude ?: 0.0;
+    val location by lVm.location.asFlow().collectAsState(initial = null)
+    val scope = rememberCoroutineScope()
 
-    //Map settings
-    val cameraPositionState = rememberCameraPositionState() { position = CameraPosition.fromLatLngZoom(LatLng(lat,lng), 100f) }
+    LaunchedEffect(location,deliveryId) {
+        if(deliveryId != "" )
+        {
+            locVM.animateCamera(scope,locVM.deliveryLocation)
+            locVM.cameraSet = true;
+        }
+        else if(location != null && !locVM.cameraSet)
+        {
+            location?.let {
+                locVM.cameraPositionState.animate(
+                    update = CameraUpdateFactory.newLatLngZoom(
+                        LatLng(it.latitude, it.longitude),
+                        15f
+                    )
+                )
+            }
+
+            locVM.cameraSet = true;
+        }
+
+    }
+
+    val context = LocalContext.current
+    val toastEvent = locVM.toastEvent.collectAsState(initial = null)
+
+    LaunchedEffect(toastEvent.value) {
+        toastEvent.value?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     var uiSettings by remember { mutableStateOf(MapUiSettings()) }
     var properties by remember {
         mutableStateOf(MapProperties(mapType = MapType.NORMAL, isTrafficEnabled = false, isBuildingEnabled = false, isMyLocationEnabled = true))
@@ -73,12 +110,13 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
     var markerLocation by remember {mutableStateOf(Position(0.0,0.0))}
 
     var tempLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
+    var deliveryLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
     Box(modifier = Modifier.fillMaxSize())
     {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = cameraPositionState,
+            cameraPositionState = locVM.cameraPositionState,
             properties = properties,
             uiSettings = uiSettings,
             onMapClick = { click->
@@ -92,37 +130,57 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
                 markerLocation = Position(click.latitude, click.longitude)
                 showDialog = true
                 tempLocation = LatLng(0.0,0.0)
-            }
+            },
         )
         {
+            val pendingDelivery = bitmapDescriptorFromVector(context, R.drawable.baseline_inventory_24)
+            val deliveryIcon = bitmapDescriptorFromVector(context, R.drawable.baseline_local_shipping_24)
+
             if(!showPickLocation)
                 locVM.markers.forEach {marker->
                     MarkerInfoWindowContent(
                         state = MarkerState(position = marker.position.toLatLng()),
                         title = marker.title,
                         onInfoWindowLongClick =
-                            {
-                                locVM.takeDelivery(marker.id)
-                            }
+                        {
+                            locVM.takeDelivery(marker.id)
+                        },
+                        onInfoWindowClick = {
+                            locVM.showDeliveryLocation(marker.position,marker.address)
+                            locVM.animateCamera(scope, LatLng(marker.address.latitude, marker.address.longitude))
+                        },
+                        icon = pendingDelivery
                     )
                     {
                         Column {
-                            Text( "Korisnik ${marker.user} je postavio ovu porudzbinu")
-                            Button(onClick = {})
-                            {
-                                Text("Lociraj Dostavu")
-                            }
+                            Text( "Description: ${marker.description}")
+                            Text("Status :${marker.status}")
+                            Text("DateTime: 2025-09-18 18:52")
                         }
 
                     }
                 }
 
-            if(showPickLocation)
+            //Odabir Lokacije za dostavu
+            if(showPickLocation && tempLocation.latitude != 0.0 && tempLocation.longitude != 0.0)
                 Marker(
                     state = MarkerState(position = tempLocation)
                 )
+
+            //Prikaz lokacije za dostavu
+            if(locVM.deliveryLocation.latitude != 0.0 && locVM.deliveryLocation.longitude != 0.0)
+                Marker(
+                    icon = deliveryIcon,
+                    state = MarkerState(position = locVM.deliveryLocation),
+                    onClick = {
+                        locVM.deliveryLocation = LatLng(0.0,0.0);
+                        locVM.animateCamera(scope,locVM.returnLocation)
+                        true
+                    }
+                )
         }
 
+        //Dijalog za dodavanje markera
         if(showDialog) AddMarker(
             onDismiss = { showDialog = false },
             onCreate = { name: String, address: Position, desc: String ->
@@ -139,10 +197,12 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
             description = locVM.description
         )
 
+        //Dijalog za odabir lokacije
         if(showPickLocation) PickLocation(
             onClick = {showPickLocation=false;showDialog=true}
         )
 
+        //Dugme za filter mape
         if(!showFilter)
             Button(
                 onClick = {
@@ -154,6 +214,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
                 Text("Filter Map")
             }
 
+        //Dijalog za filtriranje Mape
         if(showFilter)
             FilterMap(
                 username = locVM.filterUser,
@@ -162,7 +223,11 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
                 filter = {
                     locVM.loadDeliveryWithFilter(locVM.filterUser.value,locVM.filterRadius.value,locVM.filterStatus.value);
                     showFilter = false;
+                },
+                cancel = {
+                    showFilter = false;
                 }
+
             )
     }
 
@@ -223,7 +288,7 @@ fun AddMarker(
             }
         },
         confirmButton = {
-            Button(onClick = { onCreate(title.value,address.value,description.value,) }) {
+            Button(onClick = { onCreate(title.value, address.value, description.value) }) {
                 Text("Create")
             }
         },
@@ -260,10 +325,13 @@ fun FilterMap(
     username: MutableState<String>,
     radius: MutableState<String>,
     status: MutableState<String>,
-    filter:()->Unit
+    filter:()->Unit,
+    cancel:()->Unit
 )
 {
-    Column {
+    Column(modifier = Modifier
+        .fillMaxWidth()
+        .background(color = Color.White, shape = RoundedCornerShape(4.dp))) {
         OutlinedTextField(
             value = username.value,
             onValueChange = { username.value = it },
@@ -285,8 +353,31 @@ fun FilterMap(
             singleLine = true
         )
 
-        Button(onClick = filter) {
-            Text("Filter")
+        Row {
+            Button(onClick = filter) {
+                Text("Filter")
+            }
+
+            Button(onClick = cancel) {
+                Text("Cancel")
+            }
         }
+
     }
+}
+
+
+fun bitmapDescriptorFromVector(context: Context, vectorResId: Int): BitmapDescriptor {
+    val vectorDrawable = ContextCompat.getDrawable(context, vectorResId)!!
+    vectorDrawable.setBounds(0, 0, vectorDrawable.intrinsicWidth, vectorDrawable.intrinsicHeight)
+
+    val bitmap = Bitmap.createBitmap(
+        vectorDrawable.intrinsicWidth,
+        vectorDrawable.intrinsicHeight,
+        Bitmap.Config.ARGB_8888
+    )
+    val canvas = Canvas(bitmap)
+    vectorDrawable.draw(canvas)
+
+    return BitmapDescriptorFactory.fromBitmap(bitmap)
 }

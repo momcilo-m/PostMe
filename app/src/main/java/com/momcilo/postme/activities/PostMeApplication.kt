@@ -1,6 +1,9 @@
 package com.momcilo.postme.activities
 
 import android.app.Application
+import android.app.NotificationChannel
+import android.app.NotificationManager
+import android.content.Context
 import com.google.firebase.FirebaseApp
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.FirebaseDatabase
@@ -32,5 +35,23 @@ class PostMeApplication : Application() {
 
         userRepo = UserRepository(auth, userDb)
         deliveryRepo = DeliveryRepository(auth,deliveryDb)
+
+        //Notification Location
+        val channel = NotificationChannel(
+            "locationservicechannel",
+            "Location",
+            NotificationManager.IMPORTANCE_LOW
+        )
+
+        val channel1 = NotificationChannel(
+            "geo-document",
+            "Document",
+            NotificationManager.IMPORTANCE_LOW
+        )
+
+        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        notificationManager.createNotificationChannel(channel)
+        notificationManager.createNotificationChannel(channel1)
+
     }
 }

@@ -12,56 +12,72 @@ import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
+import com.google.android.gms.location.LocationCallback
 import com.google.android.gms.location.LocationListener
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.momcilo.postme.services.LocationService
+import com.google.firebase.firestore.GeoPoint
+import com.momcilo.postme.data.repositories.DeliveryRepository
+import com.momcilo.postme.data.repositories.UserRepository
 
-class LocationViewModel(val app: ComponentActivity): ViewModel()
+class LocationViewModel(
+    private val app: ComponentActivity,
+    private val userRepository: UserRepository,
+    private val deliveryRepository: DeliveryRepository
+): ViewModel()
 {
 
     private val _location  = MutableLiveData<Location>()
     val location: LiveData<Location> = _location
 
-    //Provider za prikupljanje lokacije
     private var fusedLocationClient = LocationServices.getFusedLocationProviderClient(app)
 
     @SuppressLint("MissingPermission")
-    fun initLocation() {
+    fun startLocationUpdates() {
+        Log.d("LOCATIONN","REQUEST")
+        val request = LocationRequest.Builder(
+            Priority.PRIORITY_HIGH_ACCURACY,
+            10_000L
+        ).setMinUpdateIntervalMillis(5_000L)
+            .build()
 
-        try {
-            fusedLocationClient.lastLocation
-                .addOnSuccessListener { location ->
-                    if (location != null) {
-                        _location.value = location
-                    } else {
-                        Log.d("LOCATION", "Lokacija nije dostupna")
-                    }
-                }
-                .addOnFailureListener { e ->
-                    Log.e("LOCATION", "Failed to get location", e)
-                }
-        }
-        catch (e: Exception)
+
+        val locationListener = object : LocationListener
         {
-            Log.d("LOCATION",e.toString());
+            override fun onLocationChanged(loc: Location) {
+                val current = _location.value
+                if (current == null || current.latitude != loc.latitude || current.longitude != loc.longitude) {
+                    _location.value = loc
+                    deliveryRepository.updateQueryCenter(GeoPoint(loc.latitude,loc.longitude))
+                }
+            }
         }
 
+        fusedLocationClient.requestLocationUpdates(
+            request,
+            locationListener,
+            Looper.getMainLooper()
+        )
+    }
 
-
+    override fun onCleared() {
+        super.onCleared()
+        fusedLocationClient.removeLocationUpdates(object : LocationCallback(){})
     }
 }
 
 
-class LocationViewModelFactory(private val app: ComponentActivity): ViewModelProvider.Factory
+class LocationViewModelFactory(private val app: ComponentActivity,
+                               private val userRepository: UserRepository,
+                               private val deliveryRepository: DeliveryRepository): ViewModelProvider.Factory
 {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 
         @Suppress("UNCHECKED_CAST")
         if(modelClass.isAssignableFrom(LocationViewModel::class.java))
         {
-            return LocationViewModel(app) as T;
+            return LocationViewModel(app,userRepository,deliveryRepository) as T;
         }
         throw IllegalArgumentException("Unknown ViewModel")
     }

@@ -2,9 +2,9 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:tools="http://schemas.android.com/tools">
 
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_LOCATION" />
-
-
     <!--    Location-->
     <uses-permission android:name="android.permission.ACCESS_FINE_LOCATION" />
     <uses-permission android:name="android.permission.ACCESS_COARSE_LOCATION" />
@@ -30,11 +30,11 @@
 
         <meta-data
             android:name="com.google.android.geo.API_KEY"
-            android:value="AIzaSyBqbweXkUbaXp5Y278pVW07DIcsmTii2w4" />
+            android:value="AIzaSyCDAjqtcy9m_gKwT5OVagFSt4_L0I-lExU" />
 
-        <meta-data
-            android:name="com.google.android.geo.API_MAP_ID"
-            android:value="@string/map_id" />
+<!--        <meta-data-->
+<!--            android:name="com.google.android.geo.API_MAP_ID"-->
+<!--            android:value="@string/map_id" />-->
 
         <meta-data
             android:name="com.google.android.gms.version"

@@ -1,28 +1,16 @@
 package com.momcilo.postme.data.repositories
 
-import android.app.NotificationChannel
-import android.app.NotificationManager
-import android.content.Context
-import android.os.Build
+import android.location.Location
 import android.util.Log
-import androidx.core.app.NotificationCompat
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
 //import com.firebase.geofire.GeoQueryDataEventListener
-import com.google.android.gms.tasks.Task
 import com.google.firebase.auth.FirebaseAuth
-import com.google.firebase.database.DataSnapshot
-import com.google.firebase.database.DatabaseError
-import com.google.firebase.firestore.CollectionReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
-import com.google.firebase.firestore.QuerySnapshot
-import com.momcilo.postme.R
-import com.momcilo.postme.data.entities.GeoListener
 import com.momcilo.postme.data.entities.Marker
-import com.momcilo.postme.data.entities.Position
 import kotlinx.coroutines.tasks.await
 import org.imperiumlabs.geofirestore.GeoFirestore
 import org.imperiumlabs.geofirestore.listeners.GeoQueryDataEventListener
@@ -35,10 +23,24 @@ class DeliveryRepository(
 )
 {
     private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("delivery"))
-    private val userLocation = GeoPoint(37.4219983,-122.084)
+    var userLocation = GeoPoint(0.0,0.0)
     private val geoQuery = geoFireStore.queryAtLocation(userLocation, 1.0)
 
-    suspend fun createDelivery(delivery: Marker): Result<Boolean>
+    fun distanceBetween(g1:GeoPoint, g2: GeoPoint): Float
+    {
+        var res = FloatArray(1)
+        Location.distanceBetween(
+            g1.latitude,
+            g1.longitude,
+            g2.latitude,
+            g2.longitude,
+            res
+        )
+
+        return res[0];
+    }
+
+    fun createDelivery(delivery: Marker): Result<Boolean>
     {
         return try{
             val user =  auth.currentUser
@@ -92,20 +94,30 @@ class DeliveryRepository(
             val doc = db.collection("delivery").document(id).get().await()
 
             if (!doc.exists()) {
-               throw Exception("Sorry but delivery doesn't exist")
-            }else if((doc.getString("deliverer")!= null || doc.getString("deliverer") == user.uid))
+               throw Exception("Delivery doesn't exist")
+           }
+            else if((doc.getString("deliverer")!= null || doc.getString("user") == user.uid))
             {
                 throw Exception("Delivery are taken or you can't take your delivery")
             }
-            else {
-//                doc.reference.update(
-//                    mapOf(
-//                        "deliverer" to user.uid,
-//                        "status" to "delivery",
-//                    )
-//                ).await()
-                Result.success(true)
-            }
+
+            val addressMap = doc.get("position") as Map<*, *>
+            val lat = (addressMap["latitude"] as Number).toDouble()
+            val lng = (addressMap["longitude"] as Number).toDouble()
+
+            val res= this@DeliveryRepository.distanceBetween(GeoPoint(lat,lng), userLocation);
+
+            if(res >= 250)
+                throw Exception("You are far away for take delivery")
+
+            doc.reference.update(
+                mapOf(
+                    "deliverer" to user.uid,
+                    "status" to "delivery",
+                )
+            ).await()
+            Result.success(true)
+
 
         }
         catch (e: Exception)
@@ -115,11 +127,61 @@ class DeliveryRepository(
 
     }
 
-    //Init
-    suspend fun loadDeliveries():Result<List<Marker>>
+    suspend fun finishDelivery(id: String)
+    :Result<Boolean>
     {
         return try {
-            val docs = db.collection("delivery").get().await()
+            val user =  auth.currentUser
+
+            if (user == null) {
+                return Result.failure(Exception("User not authenticated"))
+            }
+
+            val doc = db.collection("delivery").document(id).get().await()
+
+            if (!doc.exists()) {
+                throw Exception("Delivery doesn't exist")
+            }
+            else if(doc.getString("deliverer") != user.uid)
+            {
+                throw Exception("You are not responsible for this delivery")
+            }
+
+            val addressMap = doc.get("address") as Map<*, *>
+            val lat = (addressMap["latitude"] as Number).toDouble()
+            val lng = (addressMap["longitude"] as Number).toDouble()
+
+            val res= this@DeliveryRepository.distanceBetween(GeoPoint(lat,lng), userLocation);
+
+            if(res >= 250)
+                return Result.failure(Exception("You are far away for finish delivery"));
+
+            doc.reference.update(
+                mapOf(
+                    "deliverer" to "",
+                    "status" to "delivered",
+                )
+            ).await()
+
+
+            //Bodovanje korisnika
+
+
+
+            Result.success(true)
+
+        }
+        catch (e: Exception)
+        {
+            return Result.failure(e);
+        }
+    }
+
+    //Init
+    suspend fun loadPendingDeliveries():Result<List<Marker>>
+    {
+        return try {
+            val docs = db.collection("delivery").whereEqualTo("status","Pending").get().await()
             val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
             Result.success(markers);
         }
@@ -183,11 +245,11 @@ class DeliveryRepository(
     }
 
 
-    //Notifikacija kada je neko u blizini
-
+    //Notifikacija kada je objekat u blizini
     fun startGeoQuery(onNewObject: (Marker) -> Unit)
     {
         geoQuery.addGeoQueryDataEventListener(object : GeoQueryDataEventListener {
+
             override fun onDocumentChanged(
                 documentSnapshot: DocumentSnapshot,
                 location: GeoPoint
@@ -198,9 +260,8 @@ class DeliveryRepository(
             override fun onDocumentEntered(
                 documentSnapshot: DocumentSnapshot,
                 location: GeoPoint
-            ) {
-                Log.d("HAKUNA","MATATA");
-                Log.d("HAKUNA", documentSnapshot.get("title").toString());
+            )
+            {
                 val marker = documentSnapshot.toObject(Marker::class.java)?.copy(id = documentSnapshot.id)
 
                 if(marker!=null)
@@ -231,10 +292,31 @@ class DeliveryRepository(
 
     fun updateQueryCenter(newLocation: GeoPoint) {
         geoQuery?.center = newLocation
+        userLocation = newLocation;
     }
 
-//    suspend fun finishDelivery(): Result<Boolean>
-//    {
-//
-//    }
+
+    suspend fun loadDeliveryToFinish():Result<List<Marker>>
+    {
+        return try {
+            val user =  auth.currentUser
+
+            if (user == null) {
+                return Result.failure(Exception("User not authenticated"))
+            }
+
+            val id = user.uid.toString();
+            val docs = db.collection("delivery").whereNotEqualTo("status","Pending").whereEqualTo("deliverer",id).get().await()
+            val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
+
+            Result.success(markers);
+        }
+        catch (e: Exception)
+        {
+            Result.failure(e);
+        }
+    }
+
+
+
 }

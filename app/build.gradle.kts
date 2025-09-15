@@ -5,13 +5,6 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-//buildscript {
-//    dependencies {
-//        classpath("com.google.android.libraries.mapsplatform.secrets-gradleplugin:secrets-gradle-plugin:2.0.1")
-//    }
-//}
-
-
 android {
     namespace = "com.momcilo.postme"
     compileSdk = 36
@@ -29,28 +22,28 @@ android {
         }
     }
 
-    signingConfigs {
-        create("release") {
-            storeFile = file("C:\\Users\\User\\Documents\\keystore\\my-release-key.jks")
-            storePassword = "h4rd p44s5w0rd"
-            keyAlias = "my-key-alias"
-            keyPassword = "h4rd p44s5w0rd"
-        }
-    }
-
-    buildTypes {
-        getByName("release") {
-            signingConfig = signingConfigs.getByName("release")
-            isMinifyEnabled = false // ili true ako želiš proguard/r8
-            proguardFiles(
-                getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
-            )
-        }
-        getByName("debug") {
-            // debug build koristi default debug keystore, obično nije potrebno dodavati
-        }
-    }
+//    signingConfigs {
+//        create("release") {
+//            storeFile = file("C:\\Users\\User\\Documents\\keystore\\my-release-key.jks")
+//            storePassword = "h4rd p44s5w0rd"
+//            keyAlias = "my-key-alias"
+//            keyPassword = "h4rd p44s5w0rd"
+//        }
+//    }
+//
+//    buildTypes {
+//        getByName("release") {
+//            signingConfig = signingConfigs.getByName("release")
+//            isMinifyEnabled = false // ili true ako želiš proguard/r8
+//            proguardFiles(
+//                getDefaultProguardFile("proguard-android-optimize.txt"),
+//                "proguard-rules.pro"
+//            )
+//        }
+//        getByName("debug") {
+//            // debug build koristi default debug keystore, obično nije potrebno dodavati
+//        }
+//    }
 
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17

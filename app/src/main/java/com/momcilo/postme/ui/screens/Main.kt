@@ -22,18 +22,21 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
 import androidx.navigation.NavHostController
+import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import androidx.navigation.navArgument
 import com.momcilo.postme.data.entities.NavItem
 import com.momcilo.postme.data.states.AuthState
+import com.momcilo.postme.ui.viewModels.DeliveryViewModel
 import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
 import com.momcilo.postme.ui.viewModels.UserViewModel
 
 @Composable
-fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel)
+fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: DeliveryViewModel)
 {
     val navController = rememberNavController();
     val state = vm.authState.collectAsState()
@@ -71,7 +74,7 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel)
 
         }
     ) { innerPadding->
-        NavHostComposable(navController,"loading",innerPadding,vm,locVm,lVm)
+        NavHostComposable(navController,"loading",innerPadding,vm,locVm,lVm,dVm)
     }
 }
 
@@ -122,7 +125,8 @@ fun NavHostComposable(
     padding: PaddingValues,
     vm: UserViewModel,
     locVm: MapViewModel,
-    lVm: LocationViewModel
+    lVm: LocationViewModel,
+    dVm: DeliveryViewModel
 ) {
     NavHost(
         navController,
@@ -130,10 +134,17 @@ fun NavHostComposable(
         modifier = Modifier.padding(padding)
     ) {
         composable("login") { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
-        composable("home") { HomeScreen() }
+        composable("home") { HomeScreen(vm = dVm, map = locVm, nav = navController) }
         composable("profile") { ProfileScreen(vm) }
         composable("register") { RegisterScreen(userViewModel = vm) }
         composable("loading") { LoadingScreen() }
-        composable("map") { MapScreen(locVm,lVm) }
+        composable(
+            route = "map/{deliveryId}",
+            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType })
+        ) { backStackEntry ->
+            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
+            MapScreen(locVm, lVm,deliveryId)
+        }
+        composable("map") { MapScreen(locVm,lVm,"") }
     }
 }

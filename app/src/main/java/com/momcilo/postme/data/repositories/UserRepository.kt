@@ -10,6 +10,7 @@ import com.google.firebase.database.getValue
 import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.tasks.await
 import android.location.Location
+import com.google.firebase.firestore.GeoPoint
 
 
 class UserRepository(
@@ -31,7 +32,7 @@ class UserRepository(
         }
     }
 
-    suspend fun sendLocation(loc:Location)
+    suspend fun sendLocation(loc: GeoPoint)
     {
         val userId = auth.currentUser?.uid ?: return
 
@@ -42,7 +43,6 @@ class UserRepository(
             "longitude" to loc.longitude
         )
 
-        // Postavi lokaciju pod korisnika
         userRef.child("location").setValue(locationMap).await()
     }
 
@@ -88,10 +88,10 @@ class UserRepository(
     private fun convertResponse(user: DataSnapshot): User
     {
         return User(
-            email = user.child("email").toString(),
-            username = user.child("username").toString(),
-            name = user.child("name").toString(),
-            phone = user.child("phone").toString()
+            email = user.child("email").value.toString(),
+            username = user.child("username").value.toString(),
+            name = user.child("name").value.toString(),
+            phone = user.child("phone").value.toString()
         )
     }
 }

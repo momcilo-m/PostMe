@@ -39,7 +39,7 @@ fun RegisterScreen(userViewModel: UserViewModel)
             horizontalAlignment = Alignment.CenterHorizontally
         ) {
             ProfileImage(userViewModel.imageUri)
-            TitleReg()
+            Text(text="Create account")
             RegisterFields(viewModel = userViewModel);
             Submit(viewModel = userViewModel)
         }

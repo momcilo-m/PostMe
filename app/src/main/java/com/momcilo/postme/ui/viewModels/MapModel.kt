@@ -29,11 +29,18 @@ import com.google.android.gms.location.LocationListener
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
+import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.LatLng
+import com.google.maps.android.compose.CameraPositionState
+import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.data.repositories.DeliveryRepository
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class MapViewModel(
@@ -42,32 +49,42 @@ class MapViewModel(
 ): ViewModel()
 {
 
+    //(
+    //    replay = 0,
+    //    extraBufferCapacity = 1
+    //)
+    private val _toastEvent = MutableSharedFlow<String>()
+    val toastEvent = _toastEvent.asSharedFlow()
+
+
+    init {
+        viewModelScope.launch {
+            val res = repository.loadPendingDeliveries();
+            res.onSuccess {result->
+                _markers.clear()
+                _markers.addAll(result)
+            }
+            res.onFailure {fail->
+                _toastEvent.emit(fail.localizedMessage ?: fail.toString());
+            }
+
+            repository.startGeoQuery(){ marker ->
+                val exists = _markers.any { it.id == marker.id }
+                if (!exists) {
+                    _markers.add(marker)
+                }
+            };
+        }
+    }
+
     fun addMarker(name: String,address: Position, description: String,location: Position)
     {
         viewModelScope.launch {
             val res = repository.createDelivery(Marker("me",name, address,description,location))
 
             res.onSuccess {
-                marker -> _markers.add(Marker("me",name, address,description, location));
+                    marker -> _markers.add(Marker("me",name, address,description, location));
             }
-        }
-    }
-
-    init {
-        viewModelScope.launch {
-            val res = repository.loadDeliveries();
-            res.onSuccess {result->
-                _markers.clear()
-                _markers.addAll(result)
-            }
-            res.onFailure {fail->
-                Log.d("MARKERI",fail.localizedMessage ?: fail.toString());
-            }
-
-            repository.startGeoQuery(){ snapshot ->
-                sendNotification(app,snapshot.title)
-                _markers.add(snapshot);
-            };
         }
     }
 
@@ -80,8 +97,8 @@ class MapViewModel(
 
             }
 
-            res.onFailure {
-                e-> Log.d("MARKERI",e.localizedMessage ?: e.toString())
+            res.onFailure {e->
+                _toastEvent.emit(e.localizedMessage ?: e.toString());
             }
         }
     }
@@ -95,44 +112,28 @@ class MapViewModel(
         }
     }
 
+    fun showDeliveryLocation(position: Position, address: Position) {
+        returnLocation = LatLng(position.latitude, position.longitude)
+        deliveryLocation = LatLng(address.latitude, address.longitude)
+    }
 
-    private fun sendNotification(context: Context, message: String) {
-        val channelId = "geo_notifications"
-
-        val notificationManager =
-            context.getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
-
-        // Provera dozvola za Android 13+
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
-            if (ContextCompat.checkSelfPermission(context, Manifest.permission.POST_NOTIFICATIONS)
-                != PackageManager.PERMISSION_GRANTED) {
-                // Ako nema dozvolu, notifikacija se ne može prikazati
-                return
+    fun animateCamera(scope:CoroutineScope,position: LatLng)
+    {
+        Log.d("MARKER","VRACANJE ${position.latitude}, ${position.longitude}")
+        if(position.latitude != 0.0 && position.longitude !=0.0) {
+            scope.launch {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(
+                        LatLng(position.latitude, position.longitude),
+                        15f
+                    )
+                )
             }
         }
-
-        // Za Android 8.0+ mora da postoji kanal
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-            val channel = NotificationChannel(
-                channelId,
-                "GeoQuery Notifications",
-                NotificationManager.IMPORTANCE_HIGH
-            )
-            notificationManager.createNotificationChannel(channel)
-        }
-
-        val notification = NotificationCompat.Builder(context, channelId)
-            .setContentTitle("Novi objekat u blizini!")
-            .setContentText(message)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
-            .setAutoCancel(true)
-            .build()
-
-        notificationManager.notify(System.currentTimeMillis().toInt(), notification)
     }
 
     //Lista markera u mapi
-    private val _markers =mutableStateListOf<Marker>()
+    private val _markers = mutableStateListOf<Marker>()
     val markers : List<Marker> = _markers;
 
     //Dodavanje markera
@@ -144,7 +145,6 @@ class MapViewModel(
 
     private val _description = mutableStateOf<String>("")
     val description: MutableState<String> = _description
-
 
 
     //Filter map
@@ -159,6 +159,12 @@ class MapViewModel(
 
     private val _filterDistance = mutableStateOf<String>("");
     val filterDistance :MutableState<String> = _filterDistance;
+
+    //Kamera na mapi
+    var cameraSet by mutableStateOf(false)
+    val cameraPositionState = CameraPositionState()
+    var deliveryLocation by mutableStateOf(LatLng(0.0, 0.0))
+    var returnLocation by mutableStateOf(LatLng(0.0, 0.0))
 }
 
 
