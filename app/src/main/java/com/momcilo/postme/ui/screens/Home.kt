@@ -53,7 +53,6 @@ fun HomeScreen(
 {
     var selectedDelivery by remember { mutableStateOf<Marker?>(null) }
 
-
         Column(
             modifier = Modifier
                 .fillMaxSize()
@@ -105,7 +104,7 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = {
                     map.showDeliveryLocation(Position(), delivery.address)
-                    nav.navigate("map/${delivery.id}")
+                    nav.navigate("map")
                 }) {
                     Text("Show on Map")
                 }

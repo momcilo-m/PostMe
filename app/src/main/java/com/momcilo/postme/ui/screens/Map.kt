@@ -26,6 +26,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.DisposableEffectScope
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.collectAsState
@@ -44,6 +45,7 @@ import androidx.lifecycle.asFlow
 import com.google.android.gms.maps.CameraUpdateFactory
 import com.google.android.gms.maps.model.BitmapDescriptor
 import com.google.android.gms.maps.model.BitmapDescriptorFactory
+import com.google.android.gms.maps.model.CameraPosition
 import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.GoogleMap
 import com.google.maps.android.compose.MapProperties
@@ -57,26 +59,64 @@ import com.momcilo.postme.R
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel,deliveryId:String)
+fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
 {
     val location by lVm.location.asFlow().collectAsState(initial = null)
     val scope = rememberCoroutineScope()
 
-    LaunchedEffect(location,deliveryId) {
-        if(deliveryId != "" )
+    val cameraPositionState = rememberCameraPositionState {
+        position = CameraPosition.fromLatLngZoom(LatLng(0.0,0.0), 15f)
+    }
+
+    fun animateCamera(position: LatLng)
+    {
+        Log.d("MARKER","VRACANJE ${position.latitude}, ${position.longitude}")
+        if(position.latitude != 0.0 && position.longitude !=0.0) {
+            scope.launch {
+                cameraPositionState.animate(
+                    CameraUpdateFactory.newLatLngZoom(
+                        LatLng(position.latitude, position.longitude),
+                        15f
+                    )
+                )
+            }
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            locVM.cameraSet = false;
+        }
+    }
+
+    LaunchedEffect(location) {
+        if(locVM.deliveryLocation != LatLng(0.0,0.0) && locVM.showMarker)
         {
-            locVM.animateCamera(scope,locVM.deliveryLocation)
+            Log.d("MAPDEBUG","PRE ANIM MARKER "+cameraPositionState.position.toString())
+            Log.d("MAPDEBUG","PRE ANIM MARKER "+locVM.deliveryLocation.toString())
+            Log.d("MAPDEBUG","PRE ANIM MARKER "+location.toString())
+            Log.d("MAPDEBUG","PRE ANIM MARKER "+!locVM.cameraSet)
+
+            //Log.d("MAPDEBUG",locVM.deliveryLocation.latitude.toString());
+            animateCamera(locVM.deliveryLocation)
             locVM.cameraSet = true;
+            locVM.showMarker = false;
         }
         else if(location != null && !locVM.cameraSet)
         {
+            Log.d("MAPDEBUG","PRE ANIM USER "+cameraPositionState.position.toString())
+            Log.d("MAPDEBUG","PRE ANIM USER "+locVM.deliveryLocation.toString())
+            Log.d("MAPDEBUG","PRE ANIM USER "+location.toString())
+            Log.d("MAPDEBUG","PRE ANIM USER "+!locVM.cameraSet)
+            //Log.d("MAPDEBUG", location!!.latitude.toString());
             location?.let {
-                locVM.cameraPositionState.animate(
+                cameraPositionState.animate(
                     update = CameraUpdateFactory.newLatLngZoom(
                         LatLng(it.latitude, it.longitude),
                         15f
@@ -112,11 +152,12 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel,deliveryId:String)
     var tempLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
     var deliveryLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
+
     Box(modifier = Modifier.fillMaxSize())
     {
         GoogleMap(
             modifier = Modifier.fillMaxSize(),
-            cameraPositionState = locVM.cameraPositionState,
+            cameraPositionState = cameraPositionState,
             properties = properties,
             uiSettings = uiSettings,
             onMapClick = { click->
@@ -147,7 +188,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel,deliveryId:String)
                         },
                         onInfoWindowClick = {
                             locVM.showDeliveryLocation(marker.position,marker.address)
-                            locVM.animateCamera(scope, LatLng(marker.address.latitude, marker.address.longitude))
+                            animateCamera(LatLng(marker.address.latitude, marker.address.longitude))
                         },
                         icon = pendingDelivery
                     )
@@ -174,7 +215,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel,deliveryId:String)
                     state = MarkerState(position = locVM.deliveryLocation),
                     onClick = {
                         locVM.deliveryLocation = LatLng(0.0,0.0);
-                        locVM.animateCamera(scope,locVM.returnLocation)
+                        animateCamera(locVM.returnLocation)
                         true
                     }
                 )

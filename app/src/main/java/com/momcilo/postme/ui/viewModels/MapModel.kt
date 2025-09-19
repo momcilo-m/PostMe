@@ -115,21 +115,7 @@ class MapViewModel(
     fun showDeliveryLocation(position: Position, address: Position) {
         returnLocation = LatLng(position.latitude, position.longitude)
         deliveryLocation = LatLng(address.latitude, address.longitude)
-    }
-
-    fun animateCamera(scope:CoroutineScope,position: LatLng)
-    {
-        Log.d("MARKER","VRACANJE ${position.latitude}, ${position.longitude}")
-        if(position.latitude != 0.0 && position.longitude !=0.0) {
-            scope.launch {
-                cameraPositionState.animate(
-                    CameraUpdateFactory.newLatLngZoom(
-                        LatLng(position.latitude, position.longitude),
-                        15f
-                    )
-                )
-            }
-        }
+        showMarker = true;
     }
 
     //Lista markera u mapi
@@ -162,7 +148,7 @@ class MapViewModel(
 
     //Kamera na mapi
     var cameraSet by mutableStateOf(false)
-    val cameraPositionState = CameraPositionState()
+    var showMarker by mutableStateOf(false);
     var deliveryLocation by mutableStateOf(LatLng(0.0, 0.0))
     var returnLocation by mutableStateOf(LatLng(0.0, 0.0))
 }

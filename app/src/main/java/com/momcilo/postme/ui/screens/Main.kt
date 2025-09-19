@@ -21,6 +21,7 @@ import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Modifier
 import androidx.navigation.NavController
+import androidx.navigation.NavGraph.Companion.findStartDestination
 import androidx.navigation.NavHostController
 import androidx.navigation.NavType
 import androidx.navigation.compose.NavHost
@@ -34,6 +35,81 @@ import com.momcilo.postme.ui.viewModels.DeliveryViewModel
 import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
 import com.momcilo.postme.ui.viewModels.UserViewModel
+
+@Composable
+fun NavHostComposable(
+    navController: NavHostController,
+    start: String,
+    padding: PaddingValues,
+    vm: UserViewModel,
+    locVm: MapViewModel,
+    lVm: LocationViewModel,
+    dVm: DeliveryViewModel
+) {
+    NavHost(
+        navController,
+        startDestination = start,
+        modifier = Modifier.padding(padding)
+    ) {
+        composable("login") { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
+        composable("home") { HomeScreen(vm = dVm, map = locVm, nav = navController) }
+        composable("profile") { ProfileScreen(vm) }
+        composable("register") { RegisterScreen(userViewModel = vm) }
+        composable("loading") { LoadingScreen() }
+        composable("map") { MapScreen(locVm,lVm) }
+//        composable(
+//            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType; defaultValue="" }),
+//            route = "map/{deliveryId}"
+//        ) { backStackEntry ->
+//            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
+//            MapScreen(locVm, lVm,deliveryId)
+//        }
+    }
+}
+
+@Composable
+fun NavigationBarComposable(
+    paths:List<NavItem>,
+    currentRoute: String?,
+    navController: NavController)
+{
+    NavigationBar {
+        paths.forEach { item->
+            NavigationBarItem(
+                selected = currentRoute == item.path,
+                onClick = {
+                    navController.navigate(item.path) {
+                        launchSingleTop = true
+                        restoreState = true
+                        popUpTo(navController.graph.startDestinationId) { saveState = true }
+                    }
+
+                },
+                label = {Text(item.name)},
+                icon = {
+                    BadgedBox(
+                        badge = {
+                            if(item.countNotification != null)
+                            {
+                                Badge(){Text(item.countNotification.toString())}
+                            }
+                            else if(item.notification)
+                            {
+                                Badge()
+                            }
+                        }
+                    )
+                    {
+                        Icon(
+                            imageVector = if(currentRoute == item.path) item.selectedIcon else item.unselectedIcon,
+                            contentDescription = item.name
+                        )
+                    }
+                }
+            )
+        }
+    }
+}
 
 @Composable
 fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: DeliveryViewModel)
@@ -75,76 +151,5 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: Deliv
         }
     ) { innerPadding->
         NavHostComposable(navController,"loading",innerPadding,vm,locVm,lVm,dVm)
-    }
-}
-
-@Composable
-fun NavigationBarComposable(
-    paths:List<NavItem>,
-    currentRoute: String?,
-    navController: NavController)
-{
-    NavigationBar {
-        paths.forEach { item->
-            NavigationBarItem(
-                selected = currentRoute == item.path,
-                onClick = {
-                    //selectedScreen = index
-                    navController.navigate(item.path)
-                },
-                label = {Text(item.name)},
-                icon = {
-                    BadgedBox(
-                        badge = {
-                            if(item.countNotification != null)
-                            {
-                                Badge(){Text(item.countNotification.toString())}
-                            }
-                            else if(item.notification)
-                            {
-                                Badge()
-                            }
-                        }
-                    )
-                    {
-                        Icon(
-                            imageVector = if(currentRoute == item.path) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.name
-                        )
-                    }
-                }
-            )
-        }
-    }
-}
-
-@Composable
-fun NavHostComposable(
-    navController: NavHostController,
-    start: String,
-    padding: PaddingValues,
-    vm: UserViewModel,
-    locVm: MapViewModel,
-    lVm: LocationViewModel,
-    dVm: DeliveryViewModel
-) {
-    NavHost(
-        navController,
-        startDestination = start,
-        modifier = Modifier.padding(padding)
-    ) {
-        composable("login") { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
-        composable("home") { HomeScreen(vm = dVm, map = locVm, nav = navController) }
-        composable("profile") { ProfileScreen(vm) }
-        composable("register") { RegisterScreen(userViewModel = vm) }
-        composable("loading") { LoadingScreen() }
-        composable(
-            route = "map/{deliveryId}",
-            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType })
-        ) { backStackEntry ->
-            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
-            MapScreen(locVm, lVm,deliveryId)
-        }
-        composable("map") { MapScreen(locVm,lVm,"") }
     }
 }
