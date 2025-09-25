@@ -10,18 +10,35 @@ import com.google.firebase.database.getValue
 import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.tasks.await
 import android.location.Location
+import android.net.Uri
+import android.util.MutableInt
+import androidx.compose.runtime.MutableState
 import com.google.firebase.firestore.GeoPoint
+import com.google.firebase.storage.StorageReference
 
 
 class UserRepository(
     private val auth: FirebaseAuth,
-    private val db: DatabaseReference
+    private val db: DatabaseReference,
+    private val storageDb: StorageReference
 ) {
 
-    suspend fun registerUserWithEmail(user: User, password: String): Result<FirebaseUser?> {
+    suspend fun registerUserWithEmail(user: User, password: String,photo:Uri?): Result<FirebaseUser?> {
         return try {
             val res = auth.createUserWithEmailAndPassword(user.email,password).await()
             val uid = res.user?.uid ?: throw Exception("User not registered")
+
+
+            if(photo!=null)
+            {
+                val ref = storageDb.child("images/${user.email}-${System.currentTimeMillis()}.jpg")
+
+                ref.putFile(photo).await()
+
+                val downloadUrl = ref.downloadUrl.await()
+
+                user.photo = downloadUrl.toString()
+            }
 
             db.child("users").child(uid).setValue(user).await()
             Result.success(res.user)
@@ -91,7 +108,25 @@ class UserRepository(
             email = user.child("email").value.toString(),
             username = user.child("username").value.toString(),
             name = user.child("name").value.toString(),
-            phone = user.child("phone").value.toString()
+            phone = user.child("phone").value.toString(),
+            photo = user.child("photo").value.toString()
         )
+    }
+
+    suspend fun getUsers(): Result<List<User>>
+    {
+        return try {
+
+            var userDoc = db.child("users").get().await();
+
+            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }
+
+            Result.success(users);
+        }
+        catch (e: Exception)
+        {
+            Result.failure(e);
+        }
+
     }
 }

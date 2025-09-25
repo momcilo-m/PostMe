@@ -97,7 +97,9 @@ dependencies {
     implementation ("com.firebase:geofire-android-common:3.2.0")
     implementation ("com.firebase:geofire-android:3.1.0")
     implementation ("com.github.imperiumlabs:GeoFirestore-Android:v1.5.0")
-    //implementation ("com.github.imperiumlabs:GeoFirestore-Android:v1.7.0")
+    implementation("com.google.firebase:firebase-storage")
+    implementation("com.google.maps:google-maps-services:2.2.0")
+
 
     // Navigation
     val nav_version = "2.9.3"

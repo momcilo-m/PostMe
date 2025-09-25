@@ -76,6 +76,7 @@ class LocationService : Service()
 
                 Log.d("SERVICELOC", "Salje se lokacija na srv")
                 repository.sendLocation(deliveryRepository.userLocation)
+                deliveryRepository.sendLocationDelivery();
 
                 delay(60_000)
             }

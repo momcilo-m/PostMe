@@ -4,6 +4,7 @@ import android.net.Uri
 import android.util.Log
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
 import androidx.lifecycle.ViewModel
@@ -31,18 +32,32 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
 
     var currentUser by mutableStateOf(User());
 
+
+    private val _users = MutableStateFlow<List<User>>(emptyList())
+    val users: StateFlow<List<User>> = _users
+
     init {
         viewModelScope.launch {
-            val res = userRepo.isLoggedIn()
-
-            res.onSuccess { user->
+            userRepo.isLoggedIn()
+            .onSuccess { user->
                 _authState.value = AuthState.Authenticated(user);
                 currentUser = user;
+                Log.d("AUTH",user.email)
+                Log.d("AUTH",user.name)
+                Log.d("AUTH",user.photo)
             }
-
-            res.onFailure {
+            .onFailure {
                 _authState.value = AuthState.Unauthenticated
             }
+
+            userRepo.getUsers()
+                .onSuccess { data->
+                    _users.value += data
+                }
+                .onFailure {
+
+                }
+
         }
     }
 
@@ -50,7 +65,7 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
     {
         val user = User(username = name, name=name, email = email, phone = phone)
         viewModelScope.launch {
-            val res = userRepo.registerUserWithEmail(user,password);
+            val res = userRepo.registerUserWithEmail(user,password,imageUri.value);
 
             res.onSuccess {user->
                 _authState.value = AuthState.RegistrationSuccess(user?.uid ?: "", user?.email ?: email, false);
@@ -70,6 +85,7 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
 
             res.onSuccess {user->
                 _authState.value = AuthState.Authenticated(user)
+                currentUser = user;
             }
 
             res.onFailure{e->
@@ -85,7 +101,21 @@ class UserViewModel(private val userRepo: UserRepository): ViewModel() {
 
             result.onSuccess {
                 _authState.value = AuthState.Unauthenticated
+                currentUser = User();
             }
+        }
+    }
+
+    fun getUsers()
+    {
+        viewModelScope.launch {
+            userRepo.getUsers()
+                .onSuccess { data->
+                    _users.value += data
+                }
+                .onFailure {
+
+                }
         }
     }
 

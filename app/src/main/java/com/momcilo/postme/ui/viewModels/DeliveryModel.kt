@@ -7,6 +7,7 @@ import androidx.compose.runtime.mutableStateListOf
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.viewModelScope
+import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.repositories.DeliveryRepository
 import com.momcilo.postme.data.repositories.UserRepository
@@ -27,9 +28,10 @@ class DeliveryViewModel(
         viewModelScope.launch {
             deliveryRepository.loadDeliveryToFinish()
                 .onSuccess { markers->
-                    Log.d("DELIVERY","RADI")
                     _markers.clear()
                     _markers.addAll(markers);
+                    MarkerCache.clear()
+                    MarkerCache.addAll(markers);
                 }
                 .onFailure {err->
                     Log.d("DELIVERY",err.toString())
@@ -44,6 +46,8 @@ class DeliveryViewModel(
                 .onSuccess {
                     Log.d("DELIVERY","FINISH DEL")
                     _markers.removeIf { it.id == id }
+                    //Izbaci iz marker cache
+                    MarkerCache.send.removeIf { it.id == id }
                 }
                 .onFailure {e->
                     Log.d("DELIVERY","FAIL FINISH ${e}")

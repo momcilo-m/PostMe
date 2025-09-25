@@ -4,9 +4,11 @@ import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Home
+import androidx.compose.material.icons.filled.Menu
 import androidx.compose.material.icons.filled.Person
 import androidx.compose.material.icons.filled.Place
 import androidx.compose.material.icons.outlined.Home
+import androidx.compose.material.icons.outlined.Menu
 import androidx.compose.material.icons.outlined.Person
 import androidx.compose.material.icons.outlined.Place
 import androidx.compose.material3.Badge
@@ -56,6 +58,7 @@ fun NavHostComposable(
         composable("profile") { ProfileScreen(vm) }
         composable("register") { RegisterScreen(userViewModel = vm) }
         composable("loading") { LoadingScreen() }
+        composable("leaderBoard") { LeaderboardScreen(vm) }
         composable("map") { MapScreen(locVm,lVm) }
 //        composable(
 //            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType; defaultValue="" }),
@@ -124,6 +127,7 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: Deliv
     val paths = listOf(
         NavItem("Home","home", Icons.Filled.Home, Icons.Outlined.Home),
         NavItem("Map","map", Icons.Filled.Place, Icons.Outlined.Place),
+        NavItem("Leaderboard","leaderboard", Icons.Filled.Menu, Icons.Outlined.Menu),
         NavItem("Profile","profile", Icons.Filled.Person, Icons.Outlined.Person)
     )
 

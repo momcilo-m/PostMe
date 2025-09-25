@@ -17,6 +17,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.input.rememberTextFieldState
 import androidx.compose.material3.AlertDialog
@@ -150,7 +151,7 @@ fun MapScreen(locVM: MapViewModel,lVm: LocationViewModel)
     var markerLocation by remember {mutableStateOf(Position(0.0,0.0))}
 
     var tempLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
-    var deliveryLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
+    //var deliveryLocation by remember { mutableStateOf(LatLng(0.0,0.0)) }
 
 
     Box(modifier = Modifier.fillMaxSize())
@@ -372,7 +373,10 @@ fun FilterMap(
 {
     Column(modifier = Modifier
         .fillMaxWidth()
-        .background(color = Color.White, shape = RoundedCornerShape(4.dp))) {
+        .background(color = Color.White, shape = RoundedCornerShape(4.dp)),
+        verticalArrangement = Arrangement.SpaceEvenly,
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
         OutlinedTextField(
             value = username.value,
             onValueChange = { username.value = it },
@@ -398,7 +402,7 @@ fun FilterMap(
             Button(onClick = filter) {
                 Text("Filter")
             }
-
+            Spacer(modifier = Modifier.size(10.dp))
             Button(onClick = cancel) {
                 Text("Cancel")
             }

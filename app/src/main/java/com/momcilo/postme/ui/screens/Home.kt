@@ -32,6 +32,7 @@ import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.TextButton
+import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -39,6 +40,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.navigation.NavHostController
 import com.google.type.LatLng
+import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.ui.viewModels.DeliveryViewModel
@@ -51,6 +53,10 @@ fun HomeScreen(
     nav: NavHostController
 )
 {
+
+    var markers by remember { mutableStateOf(MarkerCache.temp.toList()) }
+    val combined by remember { derivedStateOf { markers + vm.markers } }
+
     var selectedDelivery by remember { mutableStateOf<Marker?>(null) }
 
         Column(
@@ -58,10 +64,11 @@ fun HomeScreen(
                 .fillMaxSize()
                 .padding(16.dp)
         ) {
+            Text("Delivery to finish")
             LazyColumn(
                 modifier = Modifier.weight(1f)
             ) {
-                items(vm.markers) { delivery ->
+                items(combined) { delivery ->
                     Card(
                         modifier = Modifier
                             .fillMaxWidth()

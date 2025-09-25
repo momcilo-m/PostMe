@@ -34,6 +34,7 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
+import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.data.repositories.DeliveryRepository
@@ -68,12 +69,12 @@ class MapViewModel(
                 _toastEvent.emit(fail.localizedMessage ?: fail.toString());
             }
 
-            repository.startGeoQuery(){ marker ->
-                val exists = _markers.any { it.id == marker.id }
-                if (!exists) {
-                    _markers.add(marker)
-                }
-            };
+//            repository.startGeoQuery(){ marker ->
+//                val exists = _markers.any { it.id == marker.id && it.status != "pending"}
+//                if (!exists) {
+//                    _markers.add(marker)
+//                }
+//            };
         }
     }
 
@@ -94,7 +95,13 @@ class MapViewModel(
             val res = repository.takeDelivery(id);
 
             res.onSuccess { res->
+                val marker = _markers.find { it.id == id }
 
+                if(marker != null)
+                    MarkerCache.add(marker);
+
+                _markers.remove(marker)
+                _toastEvent.emit("You are successfully take a delivery");
             }
 
             res.onFailure {e->

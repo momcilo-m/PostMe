@@ -4,22 +4,33 @@ import android.location.Location
 import android.util.Log
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
+import com.google.firebase.Timestamp
 //import com.firebase.geofire.GeoQueryDataEventListener
 import com.google.firebase.auth.FirebaseAuth
+import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.DocumentSnapshot
 import com.google.firebase.firestore.FirebaseFirestore
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.firestore.Query
+import com.google.maps.GeoApiContext
+import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.entities.Marker
+import com.momcilo.postme.data.entities.TempLoc
+import com.momcilo.postme.data.entities.UserDelivery
 import kotlinx.coroutines.tasks.await
 import org.imperiumlabs.geofirestore.GeoFirestore
 import org.imperiumlabs.geofirestore.listeners.GeoQueryDataEventListener
 import kotlin.Result
-
+import com.google.maps.DirectionsApi
+import com.google.maps.model.LatLng
+import com.google.maps.model.TravelMode
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 
 class DeliveryRepository(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
+    private val userDb: DatabaseReference
 )
 {
     private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("delivery"))
@@ -38,6 +49,22 @@ class DeliveryRepository(
         )
 
         return res[0];
+    }
+
+    fun distancePath(path: List<UserDelivery>): Double
+    {
+        var total = 0.0;
+
+
+        for(i in 0 until path.size-1)
+        {
+            var p1 = path[i].location;
+            var p2 = path[i+1].location;
+
+            total+= distanceBetween(GeoPoint(p1.latitude,p1.longitude), GeoPoint(p2.latitude,p2.longitude));
+        }
+
+        return total;
     }
 
     fun createDelivery(delivery: Marker): Result<Boolean>
@@ -64,13 +91,11 @@ class DeliveryRepository(
             delivery.l = GeoPoint(delivery.position.latitude, delivery.position.longitude)
 
 
-            db.collection("delivery").add(delivery)
-                .addOnSuccessListener { ref->
-                    delivery.id = ref.id.toString()
+            val docRef = db.collection("delivery").document()
+            delivery.id = docRef.id
+            docRef.set(delivery)
+                .addOnSuccessListener {
                     Result.success(true)
-                }
-                .addOnFailureListener {e->
-                    throw e
                 }
 
             Result.success(false);
@@ -85,6 +110,8 @@ class DeliveryRepository(
     {
         return try {
 
+            Log.d("FIN_DEL", "UZIMA SE ${id}")
+
             val user =  auth.currentUser
 
             if (user == null) {
@@ -96,10 +123,16 @@ class DeliveryRepository(
             if (!doc.exists()) {
                throw Exception("Delivery doesn't exist")
            }
-            else if((doc.getString("deliverer")!= null || doc.getString("user") == user.uid))
+            else if(doc.getString("deliverer")!= "" )
             {
-                throw Exception("Delivery are taken or you can't take your delivery")
+                Log.d("FIN_DEL", doc.getString("deliverer").toString())
+                throw Exception("Delivery are taken")
             }
+            else if(doc.getString("user") == user.uid)
+            {
+                throw Exception("You can't take your delivery")
+            }
+
 
             val addressMap = doc.get("position") as Map<*, *>
             val lat = (addressMap["latitude"] as Number).toDouble()
@@ -117,8 +150,6 @@ class DeliveryRepository(
                 )
             ).await()
             Result.success(true)
-
-
         }
         catch (e: Exception)
         {
@@ -138,24 +169,44 @@ class DeliveryRepository(
             }
 
             val doc = db.collection("delivery").document(id).get().await()
+            val delivery = doc.toObject(Marker::class.java)?.copy(id = doc.id)
 
             if (!doc.exists()) {
                 throw Exception("Delivery doesn't exist")
             }
-            else if(doc.getString("deliverer") != user.uid)
+            else if(delivery?.deliverer != user.uid)
             {
                 throw Exception("You are not responsible for this delivery")
             }
 
-            val addressMap = doc.get("address") as Map<*, *>
-            val lat = (addressMap["latitude"] as Number).toDouble()
-            val lng = (addressMap["longitude"] as Number).toDouble()
+            var address = delivery.address;
+            var position = delivery.position
 
-            val res= this@DeliveryRepository.distanceBetween(GeoPoint(lat,lng), userLocation);
+            val res= this@DeliveryRepository.distanceBetween(GeoPoint(address.latitude,address.longitude), userLocation);
 
             if(res >= 250)
                 return Result.failure(Exception("You are far away for finish delivery"));
 
+
+            //Racunanje bodova za delivery
+
+
+            //Predjena kilometraza
+            val pathDoc = userDb.child("user-delivery").child("${user.uid}-${id}").get().await()
+            val path = pathDoc.children.mapNotNull {child -> child.getValue(UserDelivery::class.java)}
+            var distance = distancePath(path);
+
+
+            //Optimalna kilometraza i vreme
+            var optimal = getRoute(LatLng(position.latitude,position.longitude),LatLng(address.latitude,address.longitude))
+
+            val optimalDistance = optimal["distanceMeters"]
+            val optimalTime = optimal["distanceMeters"]
+
+            //Vremena se konvertuju u ms
+            var score = calculateScore(optimalDistance ?: 0, (optimalTime ?: 0) * 1000L, distance.toLong(), Timestamp.now().toDate().time - delivery.createdAt.toDate().time);
+
+            //Upisivanje u bazu da je dostava gotova
             doc.reference.update(
                 mapOf(
                     "deliverer" to "",
@@ -163,10 +214,9 @@ class DeliveryRepository(
                 )
             ).await()
 
+            var currentScore = userDb.child("users").child(delivery.deliverer).child("points").get().await().getValue(Int::class.java);
 
-            //Bodovanje korisnika
-
-
+            userDb.child("users").child(delivery.deliverer).child("points").setValue((currentScore?:0) + score)
 
             Result.success(true)
 
@@ -177,12 +227,65 @@ class DeliveryRepository(
         }
     }
 
+    suspend fun getRoute(source: LatLng, dest: LatLng): Map<String, Long> {
+        return withContext(Dispatchers.IO) {
+            val context = GeoApiContext.Builder()
+                .apiKey("AIzaSyCDAjqtcy9m_gKwT5OVagFSt4_L0I-lExU")
+                .build()
+
+            val req = DirectionsApi.newRequest(context)
+                .origin(source)
+                .destination(dest)
+                .mode(TravelMode.DRIVING)
+
+            val res = req.await()
+
+            val distance = res.routes[0].legs[0].distance.inMeters
+            val duration = res.routes[0].legs[0].duration.inSeconds
+
+            mapOf(
+                "distanceMeters" to distance,
+                "durationSeconds" to duration
+            )
+        }
+    }
+
+    fun calculateScore(
+        optimalDistance: Long,
+        optimalTime: Long,
+        realDistance: Long,
+        realTime: Long
+    ): Double
+    {
+        var distancePercentage = 1;
+        var timePercentage = 1;
+        var base = 10.0;
+
+        //Penali za odugovlacenje
+        distancePercentage =
+            if(realDistance < optimalDistance)
+                1;
+            else
+                ((realDistance * 100 - optimalDistance).toInt() - 100)/10;
+
+        //Penali za kasnjenje
+        timePercentage =
+            if(realTime < optimalTime)
+                1
+            else
+                ((realTime * 100 - optimalTime).toInt() - 100)/10;
+
+        Log.d("DELIVERY","OPTIMAL dis: ${optimalDistance/1000.0 } ")
+        Log.d("DELIVERY","OPTIMAL dis: ${optimalTime/ 1000.0 / 1000.0}")
+        return base + optimalTime/1000.0 /1000.0 /timePercentage + optimalDistance/1000.0 / distancePercentage;
+    }
+
     //Init
     suspend fun loadPendingDeliveries():Result<List<Marker>>
     {
         return try {
-            val docs = db.collection("delivery").whereEqualTo("status","Pending").get().await()
-            val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
+            val docs = db.collection("delivery").whereEqualTo("status","pending").get().await()
+            val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }.filter { it.status == "pending" }
             Result.success(markers);
         }
         catch (e: Exception)
@@ -207,10 +310,12 @@ class DeliveryRepository(
         if (status != null && status !="") {
             query = query.whereEqualTo("status", status)
         }
+        else
+            query = query.whereNotEqualTo("status","delivered")
 
-        val res = if(radius!=null)
+        val res = if(radius!=null && radius!="")
         {
-            val center = GeoLocation(37.4219983,-122.084);
+            val center = GeoLocation(userLocation.latitude,userLocation.longitude);
             val bounds = GeoFireUtils.getGeoHashQueryBounds(center, radius.toDouble())
             val matchingDocs = mutableListOf<DocumentSnapshot>()
 
@@ -244,6 +349,33 @@ class DeliveryRepository(
         return res.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
     }
 
+    //Pracenje lokacije za delivery
+    suspend fun sendLocationDelivery() {
+        val updates = mutableMapOf<String, Any>()
+
+        if(MarkerCache.send.isEmpty())
+        {
+            Log.d("DEL","NEMA NISTA ZA SLANJE")
+            return;
+        }
+        else
+        {
+            Log.d("DEL","IMA STA ZA SLANJE")
+        }
+
+        for (marker in MarkerCache.send) {
+            val path = "user-delivery/${marker.deliverer}-${marker.id}/${System.currentTimeMillis()}"
+            val value = UserDelivery(
+                user = marker.user,
+                delivery = marker.id,
+                location = TempLoc(userLocation.latitude, userLocation.longitude)
+            )
+            updates[path] = value
+            Log.d("DEL",marker.id)
+        }
+
+        userDb.updateChildren(updates).await()
+    }
 
     //Notifikacija kada je objekat u blizini
     fun startGeoQuery(onNewObject: (Marker) -> Unit)
@@ -253,8 +385,9 @@ class DeliveryRepository(
             override fun onDocumentChanged(
                 documentSnapshot: DocumentSnapshot,
                 location: GeoPoint
-            ) {
-                Log.d("HAKUNA","PROMENA");
+            )
+            {
+
             }
 
             override fun onDocumentEntered(
@@ -269,7 +402,7 @@ class DeliveryRepository(
             }
 
             override fun onDocumentExited(documentSnapshot: DocumentSnapshot) {
-                Log.d("HAKUNA","IZASO");
+
             }
 
             override fun onDocumentMoved(
@@ -280,11 +413,11 @@ class DeliveryRepository(
             }
 
             override fun onGeoQueryError(exception: Exception) {
-                Log.d("HAKUNA","GRESKA MAKAR");
+
             }
 
             override fun onGeoQueryReady() {
-                Log.d("HAKUNA","KRECEMO");
+
             }
 
         })
@@ -294,7 +427,6 @@ class DeliveryRepository(
         geoQuery?.center = newLocation
         userLocation = newLocation;
     }
-
 
     suspend fun loadDeliveryToFinish():Result<List<Marker>>
     {
@@ -306,7 +438,7 @@ class DeliveryRepository(
             }
 
             val id = user.uid.toString();
-            val docs = db.collection("delivery").whereNotEqualTo("status","Pending").whereEqualTo("deliverer",id).get().await()
+            val docs = db.collection("delivery").whereNotEqualTo("status","pending").whereEqualTo("deliverer",id).get().await()
             val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
 
             Result.success(markers);
@@ -316,7 +448,5 @@ class DeliveryRepository(
             Result.failure(e);
         }
     }
-
-
 
 }
