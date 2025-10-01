@@ -2,10 +2,12 @@ package com.momcilo.postme.data.repositories
 
 import android.location.Location
 import android.util.Log
+import androidx.lifecycle.asFlow
 import com.firebase.geofire.GeoFireUtils
 import com.firebase.geofire.GeoLocation
 import com.google.firebase.Timestamp
 //import com.firebase.geofire.GeoQueryDataEventListener
+import org.imperiumlabs.geofirestore.GeoQuery
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.database.DatabaseReference
 import com.google.firebase.firestore.DocumentSnapshot
@@ -24,18 +26,42 @@ import kotlin.Result
 import com.google.maps.DirectionsApi
 import com.google.maps.model.LatLng
 import com.google.maps.model.TravelMode
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.filterNotNull
+import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.flow.firstOrNull
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
 class DeliveryRepository(
     private val auth: FirebaseAuth,
     private val db: FirebaseFirestore,
-    private val userDb: DatabaseReference
+    private val userDb: DatabaseReference,
+    private val locationRepository: LocationRepository,
+
 )
 {
     private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("delivery"))
-    var userLocation = GeoPoint(0.0,0.0)
-    private val geoQuery = geoFireStore.queryAtLocation(userLocation, 1.0)
+
+    val userLocation: Flow<Location> = this.locationRepository.location.asFlow().filterNotNull()
+    private lateinit var geoQuery: GeoQuery
+
+    suspend fun initQuery()
+    {
+        try {
+            val loc = userLocation.firstOrNull()
+            loc?.let {
+                geoQuery = geoFireStore.queryAtLocation(
+                    GeoPoint(it.latitude, it.longitude),
+                    1.0
+                )
+            }
+        } catch (e: Exception) {
+        }
+    }
+
 
     fun distanceBetween(g1:GeoPoint, g2: GeoPoint): Float
     {
@@ -54,7 +80,6 @@ class DeliveryRepository(
     fun distancePath(path: List<UserDelivery>): Double
     {
         var total = 0.0;
-
 
         for(i in 0 until path.size-1)
         {
@@ -138,7 +163,9 @@ class DeliveryRepository(
             val lat = (addressMap["latitude"] as Number).toDouble()
             val lng = (addressMap["longitude"] as Number).toDouble()
 
-            val res= this@DeliveryRepository.distanceBetween(GeoPoint(lat,lng), userLocation);
+            var userLoc = userLocation.first();
+
+            val res= this@DeliveryRepository.distanceBetween(GeoPoint(lat,lng),locationToGeoPoint(userLoc));
 
             if(res >= 250)
                 throw Exception("You are far away for take delivery")
@@ -182,7 +209,8 @@ class DeliveryRepository(
             var address = delivery.address;
             var position = delivery.position
 
-            val res= this@DeliveryRepository.distanceBetween(GeoPoint(address.latitude,address.longitude), userLocation);
+            var userLoc = userLocation.first();
+            val res= this@DeliveryRepository.distanceBetween(GeoPoint(address.latitude,address.longitude), locationToGeoPoint(userLoc));
 
             if(res >= 250)
                 return Result.failure(Exception("You are far away for finish delivery"));
@@ -201,7 +229,7 @@ class DeliveryRepository(
             var optimal = getRoute(LatLng(position.latitude,position.longitude),LatLng(address.latitude,address.longitude))
 
             val optimalDistance = optimal["distanceMeters"]
-            val optimalTime = optimal["distanceMeters"]
+            val optimalTime = optimal["durationSeconds"]
 
             //Vremena se konvertuju u ms
             var score = calculateScore(optimalDistance ?: 0, (optimalTime ?: 0) * 1000L, distance.toLong(), Timestamp.now().toDate().time - delivery.createdAt.toDate().time);
@@ -280,12 +308,12 @@ class DeliveryRepository(
         return base + optimalTime/1000.0 /1000.0 /timePercentage + optimalDistance/1000.0 / distancePercentage;
     }
 
-    //Init
+    //Init deliveries for map
     suspend fun loadPendingDeliveries():Result<List<Marker>>
     {
         return try {
             val docs = db.collection("delivery").whereEqualTo("status","pending").get().await()
-            val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }.filter { it.status == "pending" }
+            val markers = docs.documents.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }//.filter { it.status == "pending" }
             Result.success(markers);
         }
         catch (e: Exception)
@@ -315,7 +343,8 @@ class DeliveryRepository(
 
         val res = if(radius!=null && radius!="")
         {
-            val center = GeoLocation(userLocation.latitude,userLocation.longitude);
+            var userLoc = userLocation.first();
+            val center = GeoLocation(userLoc.latitude,userLoc.longitude);
             val bounds = GeoFireUtils.getGeoHashQueryBounds(center, radius.toDouble())
             val matchingDocs = mutableListOf<DocumentSnapshot>()
 
@@ -350,7 +379,7 @@ class DeliveryRepository(
     }
 
     //Pracenje lokacije za delivery
-    suspend fun sendLocationDelivery() {
+    suspend fun sendLocationDelivery(location:GeoPoint) {
         val updates = mutableMapOf<String, Any>()
 
         if(MarkerCache.send.isEmpty())
@@ -368,7 +397,7 @@ class DeliveryRepository(
             val value = UserDelivery(
                 user = marker.user,
                 delivery = marker.id,
-                location = TempLoc(userLocation.latitude, userLocation.longitude)
+                location = TempLoc(location.latitude, location.longitude)
             )
             updates[path] = value
             Log.d("DEL",marker.id)
@@ -424,8 +453,7 @@ class DeliveryRepository(
     }
 
     fun updateQueryCenter(newLocation: GeoPoint) {
-        geoQuery?.center = newLocation
-        userLocation = newLocation;
+        geoQuery.center = newLocation
     }
 
     suspend fun loadDeliveryToFinish():Result<List<Marker>>
@@ -447,6 +475,11 @@ class DeliveryRepository(
         {
             Result.failure(e);
         }
+    }
+
+    fun locationToGeoPoint(loc: Location): GeoPoint
+    {
+        return GeoPoint(loc.latitude,loc.longitude);
     }
 
 }

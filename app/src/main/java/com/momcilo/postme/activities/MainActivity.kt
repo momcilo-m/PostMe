@@ -11,6 +11,7 @@ import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
+import androidx.annotation.RequiresApi
 import androidx.core.app.ActivityCompat
 import com.momcilo.postme.services.LocationService
 import com.momcilo.postme.ui.viewModels.UserViewModel
@@ -19,40 +20,32 @@ import com.momcilo.postme.ui.screens.Main
 import com.momcilo.postme.ui.theme.PostMeTheme
 import com.momcilo.postme.ui.viewModels.DeliveryViewModel
 import com.momcilo.postme.ui.viewModels.DeliveryViewModelFactory
-import com.momcilo.postme.ui.viewModels.LocationViewModel
+// com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
-import com.momcilo.postme.ui.viewModels.LocationViewModelFactory
+//import com.momcilo.postme.ui.viewModels.LocationViewModelFactory
 import com.momcilo.postme.ui.viewModels.MapViewModelFactory
 import kotlin.jvm.java
 
 class MainActivity : ComponentActivity() {
 
+    //val postMe = (application as PostMeApplication);
+
     private val userViewModel : UserViewModel by viewModels()
     {
-        UserViewModelFactory((application as PostMeApplication).userRepo);
+        UserViewModelFactory((application as PostMeApplication),(application as PostMeApplication).userRepo);
     }
 
     private val mapViewModel: MapViewModel by viewModels()
     {
-        MapViewModelFactory(this,(application as PostMeApplication).deliveryRepo);
+        MapViewModelFactory((application as PostMeApplication),(application as PostMeApplication).deliveryRepo,(application as PostMeApplication).locationRepo);
     };
 
     private val deliveryViewModel: DeliveryViewModel by viewModels()
     {
-        DeliveryViewModelFactory(this,(application as PostMeApplication).deliveryRepo);
+        DeliveryViewModelFactory((application as PostMeApplication).deliveryRepo);
     };
 
-
-    private val locationViewModel : LocationViewModel by viewModels()
-    {
-        LocationViewModelFactory(
-            this,
-            (application as PostMeApplication).userRepo,
-            (application as PostMeApplication).deliveryRepo
-        )
-    }
-
-
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
@@ -61,17 +54,23 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
         setContent {
             PostMeTheme {
-                Main(userViewModel,mapViewModel,locationViewModel,deliveryViewModel)
+                Main(userViewModel,mapViewModel,deliveryViewModel)
             }
         }
     }
 
 
+    //Zahteva zbog POST_NOTIFICATION
     private fun checkLocationPermission() {
-        val permissions = listOf(
+        val permissions = mutableListOf(
             Manifest.permission.ACCESS_FINE_LOCATION,
             Manifest.permission.ACCESS_COARSE_LOCATION
         )
+
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions += Manifest.permission.POST_NOTIFICATIONS
+        }
+
 
         val notGranted = permissions.filter {
             ActivityCompat.checkSelfPermission(this, it) != PackageManager.PERMISSION_GRANTED
@@ -89,7 +88,6 @@ class MainActivity : ComponentActivity() {
     }
 
     private fun startLocationLogic() {
-        locationViewModel.startLocationUpdates()
          val intent = Intent(this, LocationService::class.java)
          startForegroundService(intent)
     }

@@ -34,19 +34,23 @@ import com.google.android.gms.maps.model.LatLng
 import com.google.maps.android.compose.CameraPositionState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
+import com.momcilo.postme.activities.PostMeApplication
 import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.entities.Marker
 import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.data.repositories.DeliveryRepository
+import com.momcilo.postme.data.repositories.LocationRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
 import kotlinx.coroutines.launch
 
 class MapViewModel(
-    val app: ComponentActivity,
-    private val repository: DeliveryRepository
+    val app: PostMeApplication,
+    private val repository: DeliveryRepository,
+    private val locRepo: LocationRepository
 ): ViewModel()
 {
 
@@ -60,8 +64,12 @@ class MapViewModel(
 
     init {
         viewModelScope.launch {
+
+            repository.initQuery()
+
             val res = repository.loadPendingDeliveries();
             res.onSuccess {result->
+                Log.d("DELIVERY","STIGLE PORUDZBINE NA MAPI")
                 _markers.clear()
                 _markers.addAll(result)
             }
@@ -69,12 +77,15 @@ class MapViewModel(
                 _toastEvent.emit(fail.localizedMessage ?: fail.toString());
             }
 
-//            repository.startGeoQuery(){ marker ->
-//                val exists = _markers.any { it.id == marker.id && it.status != "pending"}
-//                if (!exists) {
-//                    _markers.add(marker)
-//                }
-//            };
+            repository.startGeoQuery(){ marker ->
+                if(marker.status == "pending")
+                {
+                    val exists = _markers.any { it.id == marker.id }//&& it.status != "pending"
+                    if (!exists) {
+                        _markers.add(marker)
+                    }
+                }
+            };
         }
     }
 
@@ -84,7 +95,7 @@ class MapViewModel(
             val res = repository.createDelivery(Marker("me",name, address,description,location))
 
             res.onSuccess {
-                    marker -> _markers.add(Marker("me",name, address,description, location));
+                marker -> _markers.add(Marker("me",name, address,description, location));
             }
         }
     }
@@ -158,17 +169,20 @@ class MapViewModel(
     var showMarker by mutableStateOf(false);
     var deliveryLocation by mutableStateOf(LatLng(0.0, 0.0))
     var returnLocation by mutableStateOf(LatLng(0.0, 0.0))
+
+    //Lokcaija korisnika
+    val userLocation: LiveData<Location> = locRepo.location
 }
 
 
-class MapViewModelFactory(private val app: ComponentActivity,private val repository: DeliveryRepository): ViewModelProvider.Factory
+class MapViewModelFactory(private val app: PostMeApplication,private val repository: DeliveryRepository,private val locRepo: LocationRepository): ViewModelProvider.Factory
 {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 
         @Suppress("UNCHECKED_CAST")
         if(modelClass.isAssignableFrom(MapViewModel::class.java))
         {
-            return MapViewModel(app,repository) as T;
+            return MapViewModel(app,repository,locRepo) as T;
         }
         throw IllegalArgumentException("Unknown ViewModel")
     }

@@ -27,6 +27,7 @@ import com.google.firebase.firestore.GeoPoint
 import com.momcilo.postme.R
 import com.momcilo.postme.activities.PostMeApplication
 import com.momcilo.postme.data.repositories.DeliveryRepository
+import com.momcilo.postme.data.repositories.LocationRepository
 import com.momcilo.postme.data.repositories.UserRepository
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -44,6 +45,7 @@ class LocationService : Service()
 
     private lateinit var repository: UserRepository
     private lateinit var deliveryRepository: DeliveryRepository
+    private lateinit var locationRepository: LocationRepository
     private lateinit var notificationManager: NotificationManager;
 
     //Not Bind
@@ -55,17 +57,14 @@ class LocationService : Service()
         super.onCreate()
         repository = (application as PostMeApplication).userRepo
         deliveryRepository = (application as PostMeApplication).deliveryRepo
+        locationRepository = (application as PostMeApplication).locationRepo
         notificationManager = this.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
+        locationRepository.startLocationUpdates()
         sendLocationRoutine();
         startForeground(1,createNotification(this, "Location are tracking","Location Tracking", "locationservicechannel"))
-
-        deliveryRepository.startGeoQuery {
-            sendNotification(this,"New delivery is near you","New Delivery","geo-document")
-        }
-
         return START_STICKY
     }
 
@@ -73,12 +72,17 @@ class LocationService : Service()
     {
         serviceScope.launch {
             while (isActive) {
-
-                Log.d("SERVICELOC", "Salje se lokacija na srv")
-                repository.sendLocation(deliveryRepository.userLocation)
-                deliveryRepository.sendLocationDelivery();
-
                 delay(60_000)
+
+                var l = locationRepository.location.value;
+                if(l==null)
+                    continue;
+
+                var loc = GeoPoint(l.latitude,l.longitude);
+
+                repository.sendLocation(loc)
+                deliveryRepository.sendLocationDelivery(loc);
+                deliveryRepository.updateQueryCenter(loc);
             }
         }
     }

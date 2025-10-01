@@ -14,7 +14,7 @@ import com.momcilo.postme.data.repositories.UserRepository
 import kotlinx.coroutines.launch
 
 class DeliveryViewModel(
-    private val app: ComponentActivity,
+//    private val app: ComponentActivity,
     private val deliveryRepository: DeliveryRepository
     //    private val userRepository: UserRepository,
 ): ViewModel()
@@ -26,6 +26,7 @@ class DeliveryViewModel(
 
     init {
         viewModelScope.launch {
+
             deliveryRepository.loadDeliveryToFinish()
                 .onSuccess { markers->
                     _markers.clear()
@@ -36,6 +37,7 @@ class DeliveryViewModel(
                 .onFailure {err->
                     Log.d("DELIVERY",err.toString())
                 }
+
         }
     }
 
@@ -46,25 +48,24 @@ class DeliveryViewModel(
                 .onSuccess {
                     Log.d("DELIVERY","FINISH DEL")
                     _markers.removeIf { it.id == id }
-                    //Izbaci iz marker cache
                     MarkerCache.send.removeIf { it.id == id }
                 }
                 .onFailure {e->
-                    Log.d("DELIVERY","FAIL FINISH ${e}")
+                    Log.d("DELIVERY","FAIL FINISH $e")
                 }
         }
     }
 }
 
 
-class DeliveryViewModelFactory(private val app: ComponentActivity,private val repository: DeliveryRepository): ViewModelProvider.Factory
+class DeliveryViewModelFactory(private val repository: DeliveryRepository): ViewModelProvider.Factory
 {
     override fun <T : ViewModel> create(modelClass: Class<T>): T {
 
         @Suppress("UNCHECKED_CAST")
         if(modelClass.isAssignableFrom(DeliveryViewModel::class.java))
         {
-            return DeliveryViewModel(app,repository) as T;
+            return DeliveryViewModel(repository) as T;
         }
         throw IllegalArgumentException("Unknown ViewModel")
     }

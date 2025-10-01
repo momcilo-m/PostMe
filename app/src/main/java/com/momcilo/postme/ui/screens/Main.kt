@@ -34,7 +34,6 @@ import androidx.navigation.navArgument
 import com.momcilo.postme.data.entities.NavItem
 import com.momcilo.postme.data.states.AuthState
 import com.momcilo.postme.ui.viewModels.DeliveryViewModel
-import com.momcilo.postme.ui.viewModels.LocationViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
 import com.momcilo.postme.ui.viewModels.UserViewModel
 
@@ -45,7 +44,6 @@ fun NavHostComposable(
     padding: PaddingValues,
     vm: UserViewModel,
     locVm: MapViewModel,
-    lVm: LocationViewModel,
     dVm: DeliveryViewModel
 ) {
     NavHost(
@@ -59,7 +57,7 @@ fun NavHostComposable(
         composable("register") { RegisterScreen(userViewModel = vm) }
         composable("loading") { LoadingScreen() }
         composable("leaderBoard") { LeaderboardScreen(vm) }
-        composable("map") { MapScreen(locVm,lVm) }
+        composable("map") { MapScreen(locVm) }
 //        composable(
 //            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType; defaultValue="" }),
 //            route = "map/{deliveryId}"
@@ -115,7 +113,7 @@ fun NavigationBarComposable(
 }
 
 @Composable
-fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: DeliveryViewModel)
+fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
 {
     val navController = rememberNavController();
     val state = vm.authState.collectAsState()
@@ -154,6 +152,6 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,lVm: LocationViewModel,dVm: Deliv
 
         }
     ) { innerPadding->
-        NavHostComposable(navController,"loading",innerPadding,vm,locVm,lVm,dVm)
+        NavHostComposable(navController,"loading",innerPadding,vm,locVm,dVm)
     }
 }

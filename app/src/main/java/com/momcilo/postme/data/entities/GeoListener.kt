@@ -42,6 +42,4 @@ class GeoListener(
     override fun onGeoQueryError(error: DatabaseError?) {
         TODO("Not yet implemented")
     }
-
-
 }

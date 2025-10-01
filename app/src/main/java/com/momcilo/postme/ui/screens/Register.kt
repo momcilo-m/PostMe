@@ -25,7 +25,6 @@ import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
-import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.ui.viewModels.UserViewModel
 import com.momcilo.postme.R
 
@@ -44,18 +43,10 @@ fun RegisterScreen(userViewModel: UserViewModel)
             Submit(viewModel = userViewModel)
         }
     }
-
-
 }
 
 @Composable
-fun TitleReg(modifier: Modifier = Modifier)
-{
-    Text(text="Create account")
-}
-
-@Composable
-fun RegisterFields(modifier: Modifier= Modifier, viewModel:UserViewModel)
+fun RegisterFields(viewModel:UserViewModel)
 {
 
     Column {

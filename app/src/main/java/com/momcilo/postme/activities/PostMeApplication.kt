@@ -15,6 +15,7 @@ import com.google.firebase.firestore.firestore
 import com.google.firebase.storage.FirebaseStorage
 import com.momcilo.postme.data.cache.MarkerCache
 import com.momcilo.postme.data.repositories.DeliveryRepository
+import com.momcilo.postme.data.repositories.LocationRepository
 
 class PostMeApplication : Application() {
     lateinit var userRepo: UserRepository
@@ -23,12 +24,11 @@ class PostMeApplication : Application() {
     lateinit var deliveryRepo: DeliveryRepository
         private set
 
+    lateinit var locationRepo: LocationRepository
+        private set
+
     override fun onCreate() {
         super.onCreate()
-
-//        MarkerCache.clear()
-//
-//        Log.d("DEL", "Cache cleared: ${MarkerCache.send.size} items")
 
         if (FirebaseApp.getApps(this).isEmpty()) {
             FirebaseApp.initializeApp(this)
@@ -40,7 +40,8 @@ class PostMeApplication : Application() {
         val deliveryDb : FirebaseFirestore by lazy { Firebase.firestore }
 
         userRepo = UserRepository(auth, userDb,storageDb)
-        deliveryRepo = DeliveryRepository(auth,deliveryDb,userDb)
+        locationRepo = LocationRepository(this)
+        deliveryRepo = DeliveryRepository(auth,deliveryDb,userDb,locationRepo)
 
         //Notification Location
         val channel = NotificationChannel(
@@ -49,13 +50,14 @@ class PostMeApplication : Application() {
             NotificationManager.IMPORTANCE_LOW
         )
 
+        //Notification Object Radius
         val channel1 = NotificationChannel(
             "geo-document",
             "Document",
             NotificationManager.IMPORTANCE_LOW
         )
 
-        val notificationManager = getSystemService(Context.NOTIFICATION_SERVICE) as NotificationManager
+        val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager
         notificationManager.createNotificationChannel(channel)
         notificationManager.createNotificationChannel(channel1)
     }

@@ -74,7 +74,7 @@ fun LeaderboardItem(rank: Int, username: String, score: Int, imageUrl: String) {
         }
 
         Text(
-            text = "${score} pts",
+            text = "$score pts",
             fontSize = 16.sp,
             fontWeight = FontWeight.Bold
         )

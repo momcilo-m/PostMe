@@ -28,7 +28,6 @@ class UserRepository(
             val res = auth.createUserWithEmailAndPassword(user.email,password).await()
             val uid = res.user?.uid ?: throw Exception("User not registered")
 
-
             if(photo!=null)
             {
                 val ref = storageDb.child("images/${user.email}-${System.currentTimeMillis()}.jpg")
@@ -59,7 +58,6 @@ class UserRepository(
             "latitude" to loc.latitude,
             "longitude" to loc.longitude
         )
-
         userRef.child("location").setValue(locationMap).await()
     }
 

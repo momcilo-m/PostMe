@@ -41,22 +41,19 @@ import androidx.compose.ui.unit.dp
 import coil.compose.AsyncImage
 import com.momcilo.postme.R
 import com.momcilo.postme.ui.viewModels.UserViewModel
+import androidx.core.net.toUri
 
 @Composable
 fun ProfileScreen(
     viewModel:UserViewModel
 )
 {
-    val context = LocalContext.current
 
-    val photoUri: Uri = if (viewModel.currentUser.photo.isNotEmpty()) {
-        Uri.parse(viewModel.currentUser.photo)
-    } else {
-        Uri.parse("android.resource://${context.packageName}/${R.mipmap.profile}")
-    }
+    val photoUri: Uri = viewModel.currentUser.photo.toUri()
 
-    var nickname by remember { mutableStateOf("") }
-    var points by remember { mutableStateOf("") }
+    //val context = LocalContext.current
+//    var nickname by remember { mutableStateOf("") }
+//    var points by remember { mutableStateOf("") }
 
     Column(
         modifier = Modifier
@@ -84,15 +81,14 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // Send Points section
-        sendPoints()
+        SendPoints()
     }
 
 }
 
 
 @Composable
-fun sendPoints()
+fun SendPoints()
 {
     var expanded by remember { mutableStateOf(false) }
     var nickname by remember { mutableStateOf("") }
@@ -144,7 +140,7 @@ fun sendPoints()
                 Button(
                     onClick = {
                         val pts = points.toIntOrNull() ?: 0
-                        expanded = false // zatvori nakon slanja
+                        expanded = false
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = nickname.isNotBlank() && points.isNotBlank()
