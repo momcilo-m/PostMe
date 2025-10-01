@@ -2,9 +2,11 @@ package com.momcilo.postme.ui.viewModels
 
 import android.Manifest
 import android.annotation.SuppressLint
+import android.app.Notification
 import android.app.NotificationChannel
 import android.app.NotificationManager
 import android.content.Context
+import android.content.Context.NOTIFICATION_SERVICE
 import android.content.pm.PackageManager
 import android.location.Location
 import android.os.Build
@@ -54,6 +56,8 @@ class MapViewModel(
 ): ViewModel()
 {
 
+    var notificationManager = app.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
+
     //(
     //    replay = 0,
     //    extraBufferCapacity = 1
@@ -85,6 +89,9 @@ class MapViewModel(
                         _markers.add(marker)
                     }
                 }
+
+                sendNotification(app,"New delivery is near you","Slow down boy","geo-document")
+
             };
         }
     }
@@ -134,6 +141,22 @@ class MapViewModel(
         returnLocation = LatLng(position.latitude, position.longitude)
         deliveryLocation = LatLng(address.latitude, address.longitude)
         showMarker = true;
+    }
+
+    private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {
+
+        return NotificationCompat.Builder(context, channel)
+            .setSmallIcon(R.drawable.baseline_share_location_24)
+            .setContentTitle(title)
+            .setContentText(message)
+            .setPriority(NotificationCompat.PRIORITY_LOW)
+            //.setOngoing(true)
+            .build()
+    }
+
+    private fun sendNotification(context: Context, message: String,title: String, channel:String) {
+        val notificationId = System.currentTimeMillis().toInt()
+        notificationManager.notify(notificationId, createNotification(context, message,title, channel))
     }
 
     //Lista markera u mapi

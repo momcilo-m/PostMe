@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
+import com.momcilo.postme.data.cache.MarkerCache
 
 class UserViewModel(
     private val context: PostMeApplication,
@@ -54,8 +55,11 @@ class UserViewModel(
                 Log.d("AUTH",user.name)
                 Log.d("AUTH",user.photo)
             }
-            .onFailure {
+            .onFailure { e->
                 _authState.value = AuthState.Unauthenticated
+                Log.d("AUTH","NISI AUTH")
+                Log.d("AUTH","$e")
+
             }
 
             userRepo.getUsers()
@@ -111,6 +115,8 @@ class UserViewModel(
                 _authState.value = AuthState.Unauthenticated
                 currentUser = User();
             }
+
+            MarkerCache.clear()
         }
     }
 

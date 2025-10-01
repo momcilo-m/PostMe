@@ -92,7 +92,7 @@ class MainActivity : ComponentActivity() {
          startForegroundService(intent)
     }
 
-    @SuppressLint("MissingPermission")
+    @Deprecated("This method has been deprecated")
     override fun onRequestPermissionsResult(
         requestCode: Int,
         permissions: Array<String>,

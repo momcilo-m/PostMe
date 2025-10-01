@@ -2,10 +2,8 @@ package com.momcilo.postme.data.repositories
 
 import android.annotation.SuppressLint
 import android.content.Context
-//import android.health.connect.datatypes.ExerciseRoute.Location
 import android.os.Build
 import android.os.Looper
-import android.util.Log
 import androidx.annotation.RequiresApi
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -14,7 +12,6 @@ import com.google.android.gms.location.LocationListener
 import com.google.android.gms.location.LocationRequest
 import com.google.android.gms.location.LocationServices
 import com.google.android.gms.location.Priority
-import com.google.firebase.firestore.GeoPoint
 import android.location.Location
 
 class LocationRepository(
@@ -28,7 +25,6 @@ class LocationRepository(
 
     @SuppressLint("MissingPermission")
     fun startLocationUpdates() {
-        //Log.d("LOCATION","REQUEST")
 
         val request = LocationRequest.Builder(
             Priority.PRIORITY_HIGH_ACCURACY,

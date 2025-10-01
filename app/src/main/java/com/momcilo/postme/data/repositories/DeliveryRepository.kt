@@ -55,7 +55,7 @@ class DeliveryRepository(
             loc?.let {
                 geoQuery = geoFireStore.queryAtLocation(
                     GeoPoint(it.latitude, it.longitude),
-                    1.0
+                    0.250
                 )
             }
         } catch (e: Exception) {
@@ -294,21 +294,25 @@ class DeliveryRepository(
             if(realDistance < optimalDistance)
                 1;
             else
-                ((realDistance * 100 - optimalDistance).toInt() - 100)/10;
+                ((realDistance * 100 / optimalDistance).toInt() - 100)/100;
 
         //Penali za kasnjenje
         timePercentage =
             if(realTime < optimalTime)
                 1
             else
-                ((realTime * 100 - optimalTime).toInt() - 100)/10;
+                ((realTime * 100 / optimalTime).toInt() - 100)/100;
 
-        Log.d("DELIVERY","OPTIMAL dis: ${optimalDistance/1000.0 } ")
-        Log.d("DELIVERY","OPTIMAL dis: ${optimalTime/ 1000.0 / 1000.0}")
-        return base + optimalTime/1000.0 /1000.0 /timePercentage + optimalDistance/1000.0 / distancePercentage;
+        if (timePercentage == 1 && distancePercentage == 1)
+            return base + realDistance + realTime;
+
+        val calcTime = (realTime / 1000.0 / 60.0) - (realTime / 1000.0 / 60.0) * timePercentage
+        val calcDistance = (realDistance / 1000.0) - (realDistance / 1000.0) * distancePercentage
+
+        return base + calcTime + calcDistance
     }
 
-    //Init deliveries for map
+    //Pocetne dostave na mapi
     suspend fun loadPendingDeliveries():Result<List<Marker>>
     {
         return try {
@@ -378,7 +382,7 @@ class DeliveryRepository(
         return res.mapNotNull { it.toObject(Marker::class.java)?.copy(id = it.id) }
     }
 
-    //Pracenje lokacije za delivery
+    //Slanje lokacije za user-delivery
     suspend fun sendLocationDelivery(location:GeoPoint) {
         val updates = mutableMapOf<String, Any>()
 
@@ -424,29 +428,30 @@ class DeliveryRepository(
                 location: GeoPoint
             )
             {
+                Log.d("GEOQUERY","ENTER")
                 val marker = documentSnapshot.toObject(Marker::class.java)?.copy(id = documentSnapshot.id)
-
+                Log.d("GEOQUERY","ENTER ${marker?.title}")
                 if(marker!=null)
                     onNewObject(marker)
             }
 
             override fun onDocumentExited(documentSnapshot: DocumentSnapshot) {
-
+                Log.d("GEOQUERY","EXIT")
             }
 
             override fun onDocumentMoved(
                 documentSnapshot: DocumentSnapshot,
                 location: GeoPoint
             ) {
-                TODO("Not yet implemented")
+                Log.d("GEOQUERY","MOVE")
             }
 
             override fun onGeoQueryError(exception: Exception) {
-
+                Log.d("GEOQUERY","ERROR")
             }
 
             override fun onGeoQueryReady() {
-
+                Log.d("GEOQUERY","READY")
             }
 
         })

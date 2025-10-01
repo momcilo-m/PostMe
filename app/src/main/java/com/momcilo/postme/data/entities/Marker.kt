@@ -4,7 +4,7 @@ import com.google.firebase.Timestamp
 import com.google.firebase.firestore.GeoPoint
 
 data class Marker(
-    //Kada korisnik kreira
+
     var user: String = "",
     val title: String = "",
     val address: Position = Position(),

@@ -90,11 +90,11 @@ class LocationService : Service()
     private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {
 
         return NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.ic_launcher_foreground)
+            .setSmallIcon(R.drawable.baseline_share_location_24)
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_LOW)
-            .setAutoCancel(true)
+            .setOngoing(true)
             .build()
     }
 
@@ -102,4 +102,6 @@ class LocationService : Service()
         val notificationId = System.currentTimeMillis().toInt()
         notificationManager.notify(notificationId, createNotification(context, message,title, channel))
     }
+
+
 }
