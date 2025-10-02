@@ -1,18 +1,17 @@
 package com.momcilo.postme.data.repositories
 
-import android.util.Log
 import com.google.firebase.auth.FirebaseAuth
 import com.google.firebase.auth.FirebaseUser
 import com.google.firebase.database.DataSnapshot
 import com.google.firebase.database.DatabaseReference
-import com.google.firebase.database.FirebaseDatabase
-import com.google.firebase.database.getValue
 import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.tasks.await
-import android.location.Location
 import android.net.Uri
-import android.util.MutableInt
-import androidx.compose.runtime.MutableState
+import android.util.Log
+import androidx.lifecycle.LiveData
+import androidx.lifecycle.MutableLiveData
+import com.google.firebase.database.DatabaseError
+import com.google.firebase.database.ValueEventListener
 import com.google.firebase.firestore.GeoPoint
 import com.google.firebase.storage.StorageReference
 
@@ -107,26 +106,98 @@ class UserRepository(
             username = user.child("username").value.toString(),
             name = user.child("name").value.toString(),
             phone = user.child("phone").value.toString(),
-            photo = user.child("photo").value.toString()
+            photo = user.child("photo").value.toString(),
+            points = user.child("points").value.toString().toInt()
         )
     }
 
-    suspend fun getUsers(): Result<List<User>>
+    private val _users = MutableLiveData<List<User>>()
+    val users: LiveData<List<User>> = _users
+
+    fun trackUser()
+    {
+        db.child("users")
+            .orderByChild("points")
+            .limitToLast(15)
+            .addValueEventListener(object : ValueEventListener{
+            override fun onDataChange(snapshot: DataSnapshot) {
+
+                val usersList = mutableListOf<User>()
+                for (userSnap in snapshot.children) {
+                    val user = userSnap.getValue(User::class.java)
+                    user?.let { usersList.add(it) }
+                }
+
+                val sorted = usersList.sortedByDescending { it.points }
+
+                _users.value = sorted
+            }
+
+            override fun onCancelled(error: DatabaseError) {
+                Log.e("Firebase", "Database error: ${error.message}")
+            }
+        })
+
+    }
+
+//    suspend fun getUsers(): Result<List<User>>
+//    {
+//        return try {
+//
+//            var userDoc = db.child("users")
+//                //.orderByChild("points")
+//                .get().await();
+//
+//            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }.sortedByDescending { it.points }
+//
+//            Result.success(users);
+//        }
+//        catch (e: Exception)
+//        {
+//            Result.failure(e);
+//        }
+//
+//    }
+
+    suspend fun sendPoints(username: String, points: Int): Result<Boolean>
     {
         return try {
+            val uid = auth.currentUser?.uid ?: return Result.failure(Exception("Not auth"))
 
-            var userDoc = db.child("users")
-                //.orderByChild("points")
-                .get().await();
+            val userSnapshot = db.child("users").child(uid).get().await()
+            val user = convertResponse(userSnapshot)
 
-            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }.sortedByDescending { it.points }
+            if(user.points >= points)
+            {
+                val receiverSnapshot = db.child("users").orderByChild("name").equalTo(username).get().await()
 
-            Result.success(users);
+                if (receiverSnapshot.exists()) {
+                    val receiverChild = receiverSnapshot.children.first()
+                    val receiver = convertResponse(receiverChild)
+                    val receiverUid = receiverChild.key
+
+                    Log.d("POINTS","RECEIVER $receiverUid")
+
+                    val updates = hashMapOf<String, Any>(
+                        "/users/$uid/points" to (user.points - points),
+                        "/users/$receiverUid/points" to (receiver.points + points)
+                    )
+
+                    db.updateChildren(updates).await()
+                    Result.success(true);
+                }
+                else
+                    Result.failure(Exception("User not found"));
+            }
+            else
+            {
+                Result.failure(Exception("You don't have enough points"));
+            }
+
         }
-        catch (e: Exception)
+        catch (_: Exception)
         {
-            Result.failure(e);
+            Result.failure(Exception("Something went wrong with send points"));
         }
-
     }
 }

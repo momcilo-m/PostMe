@@ -150,7 +150,6 @@ class MapViewModel(
             .setContentTitle(title)
             .setContentText(message)
             .setPriority(NotificationCompat.PRIORITY_HIGH)
-            //.setOngoing(true)
             .build()
     }
 

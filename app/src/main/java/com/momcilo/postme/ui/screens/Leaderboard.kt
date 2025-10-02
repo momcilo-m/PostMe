@@ -27,18 +27,21 @@ fun LeaderboardScreen(vm: UserViewModel) {
 
     val listState = rememberLazyListState()
 
-
-    LazyColumn(state = listState) {
-        itemsIndexed(vm.users.value){ index,user ->
-            LeaderboardItem(
-                rank = index+1,
-                username = user.username,
-                score = user.points,
-                imageUrl = user.photo
-            )
+    Column {
+        Text("Leaderboard", modifier = Modifier.padding(10.dp))
+        Spacer(modifier = Modifier.height(10.dp))
+        LazyColumn(state = listState, modifier = Modifier.fillMaxSize().padding(10.dp)) {
+            itemsIndexed(vm.users.value) { index, user ->
+                LeaderboardItem(
+                    rank = index + 1,
+                    username = user.username,
+                    score = user.points,
+                    imageUrl = user.photo
+                )
 //            if (index == users.lastIndex - 2) {
 //                viewModel.loadNextPage()
 //            }
+            }
         }
     }
 }

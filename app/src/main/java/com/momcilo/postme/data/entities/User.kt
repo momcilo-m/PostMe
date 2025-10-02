@@ -15,7 +15,7 @@ data class User(
     val phone: String = "",
     val name: String = "",
     val lastName: String = "",
-    val points: Int = 0,
+    var points: Int = 0,
     var photo: String = "",
     val location: TempLoc? = null
 )

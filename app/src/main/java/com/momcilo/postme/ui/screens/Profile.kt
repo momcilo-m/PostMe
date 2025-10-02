@@ -81,14 +81,16 @@ fun ProfileScreen(
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        SendPoints()
+        SendPoints(sendPoints = viewModel::transferPoints)
     }
 
 }
 
 
 @Composable
-fun SendPoints()
+fun SendPoints(
+    sendPoints:(name:String, points:Int)->Unit
+)
 {
     var expanded by remember { mutableStateOf(false) }
     var nickname by remember { mutableStateOf("") }
@@ -139,8 +141,9 @@ fun SendPoints()
 
                 Button(
                     onClick = {
-                        val pts = points.toIntOrNull() ?: 0
-                        expanded = false
+                        sendPoints(nickname,points.toInt())
+                        nickname="";
+                        points="";
                     },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = nickname.isNotBlank() && points.isNotBlank()

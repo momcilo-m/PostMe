@@ -20,6 +20,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
+import androidx.lifecycle.asFlow
 import com.momcilo.postme.data.cache.MarkerCache
 
 class UserViewModel(
@@ -31,9 +32,6 @@ class UserViewModel(
     var email by mutableStateOf("")
     var password by mutableStateOf("")
     var phone by mutableStateOf("")
-
-//    private val _imageUri  = mutableStateOf<Uri?>(null)
-//    val imageUri: MutableState<Uri?> = _imageUri;
     var imageUri = mutableStateOf<Uri?>("android.resource://${this.context.packageName}/${R.mipmap.profile}".toUri())
 
     private val _authState = MutableStateFlow<AuthState>(AuthState.Loading)
@@ -62,15 +60,18 @@ class UserViewModel(
 
             }
 
-            userRepo.getUsers()
-                .onSuccess { data->
-                    _users.value += data
-                }
-                .onFailure {
+            userRepo.trackUser()
 
-                }
+            userRepo.users.observeForever { list ->
+                _users.value = list
+            }
 
         }
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        userRepo.users.removeObserver{}
     }
 
     fun register()
@@ -122,14 +123,32 @@ class UserViewModel(
 
     fun getUsers()
     {
-        viewModelScope.launch {
-            userRepo.getUsers()
-                .onSuccess { data->
-                    _users.value += data
-                }
-                .onFailure {
+//        viewModelScope.launch {
+//            userRepo.getUsers()
+//                .onSuccess { data->
+//                    _users.value += data
+//                }
+//                .onFailure {
+//
+//                }
+//        }
+    }
 
-                }
+    fun transferPoints(name: String, points:Int=0)
+    {
+        if(points == 0)
+            return;
+
+        viewModelScope.launch {
+            val res = userRepo.sendPoints(name,points)
+
+            res.onSuccess {
+                Log.d("POINTS", "POINTS ARE SEND")
+            }
+
+            res.onFailure {e->
+                Log.d("POINTS", e.localizedMessage ?: "Something went wrong")
+            }
         }
     }
 

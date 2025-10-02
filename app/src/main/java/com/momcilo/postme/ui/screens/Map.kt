@@ -196,7 +196,7 @@ fun MapScreen(locVM: MapViewModel)
                         Column {
                             Text( "Description: ${marker.description}")
                             Text("Status :${marker.status}")
-                            Text("DateTime: 2025-09-18 18:52")
+                            Text("Time: ${marker.createdAt.toDate()}")
                         }
 
                     }

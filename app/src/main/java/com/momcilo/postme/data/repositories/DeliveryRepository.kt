@@ -103,7 +103,7 @@ class DeliveryRepository(
 
             delivery.user = user.uid.toString()
 
-            //Hah lokacija
+            //Hash lokacija
             var loc = GeoLocation(delivery.address.latitude,delivery.address.longitude)
             var hsh = GeoFireUtils.getGeoHashForLocation(loc)
             delivery.address.hash = hsh;
@@ -157,7 +157,6 @@ class DeliveryRepository(
             {
                 throw Exception("You can't take your delivery")
             }
-
 
             val addressMap = doc.get("position") as Map<*, *>
             val lat = (addressMap["latitude"] as Number).toDouble()
