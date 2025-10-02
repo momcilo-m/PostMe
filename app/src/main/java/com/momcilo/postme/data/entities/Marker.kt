@@ -10,7 +10,9 @@ data class Marker(
     val address: Position = Position(),
     val description: String ="",
     val position: Position = Position(),
+
     val createdAt: Timestamp = Timestamp.now(),
+    var takeAt: Timestamp = Timestamp.now(),
 
     var id:String="",
     val status : String = "pending",

@@ -54,7 +54,7 @@ class PostMeApplication : Application() {
         val channel1 = NotificationChannel(
             "geo-document",
             "Document",
-            NotificationManager.IMPORTANCE_LOW
+            NotificationManager.IMPORTANCE_HIGH
         )
 
         val notificationManager = getSystemService(NOTIFICATION_SERVICE) as NotificationManager

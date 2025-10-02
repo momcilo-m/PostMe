@@ -115,9 +115,11 @@ class UserRepository(
     {
         return try {
 
-            var userDoc = db.child("users").get().await();
+            var userDoc = db.child("users")
+                //.orderByChild("points")
+                .get().await();
 
-            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }
+            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }.sortedByDescending { it.points }
 
             Result.success(users);
         }

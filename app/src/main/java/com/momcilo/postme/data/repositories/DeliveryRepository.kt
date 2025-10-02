@@ -46,7 +46,7 @@ class DeliveryRepository(
     private val geoFireStore: GeoFirestore = GeoFirestore(db.collection("delivery"))
 
     val userLocation: Flow<Location> = this.locationRepository.location.asFlow().filterNotNull()
-    private lateinit var geoQuery: GeoQuery
+    private var geoQuery: GeoQuery? = null
 
     suspend fun initQuery()
     {
@@ -173,9 +173,12 @@ class DeliveryRepository(
             doc.reference.update(
                 mapOf(
                     "deliverer" to user.uid,
+                    "takeAt" to Timestamp.now(),
                     "status" to "delivery",
                 )
             ).await()
+
+
             Result.success(true)
         }
         catch (e: Exception)
@@ -232,7 +235,7 @@ class DeliveryRepository(
             val optimalTime = optimal["durationSeconds"]
 
             //Vremena se konvertuju u ms
-            var score = calculateScore(optimalDistance ?: 0, (optimalTime ?: 0) * 1000L, distance.toLong(), Timestamp.now().toDate().time - delivery.createdAt.toDate().time);
+            var score = calculateScore(optimalDistance ?: 0, (optimalTime ?: 0) * 1000L, distance.toLong(), Timestamp.now().toDate().time - delivery.takeAt.toDate().time);
 
             //Upisivanje u bazu da je dostava gotova
             doc.reference.update(
@@ -413,7 +416,7 @@ class DeliveryRepository(
     //Notifikacija kada je objekat u blizini
     fun startGeoQuery(onNewObject: (Marker) -> Unit)
     {
-        geoQuery.addGeoQueryDataEventListener(object : GeoQueryDataEventListener {
+        geoQuery?.addGeoQueryDataEventListener(object : GeoQueryDataEventListener {
 
             override fun onDocumentChanged(
                 documentSnapshot: DocumentSnapshot,
@@ -451,14 +454,14 @@ class DeliveryRepository(
             }
 
             override fun onGeoQueryReady() {
-                Log.d("GEOQUERY","READY")
+                //Log.d("GEOQUERY","READY")
             }
 
         })
     }
 
     fun updateQueryCenter(newLocation: GeoPoint) {
-        geoQuery.center = newLocation
+        geoQuery?.center = newLocation
     }
 
     suspend fun loadDeliveryToFinish():Result<List<Marker>>

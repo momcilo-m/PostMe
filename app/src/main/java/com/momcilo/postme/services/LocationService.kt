@@ -29,11 +29,19 @@ import com.momcilo.postme.activities.PostMeApplication
 import com.momcilo.postme.data.repositories.DeliveryRepository
 import com.momcilo.postme.data.repositories.LocationRepository
 import com.momcilo.postme.data.repositories.UserRepository
+import com.momcilo.postme.utils.DefaultLocationClient
+import com.momcilo.postme.utils.LocationClient
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.catch
+import kotlinx.coroutines.flow.launchIn
+import kotlinx.coroutines.flow.onEach
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 
@@ -48,6 +56,13 @@ class LocationService : Service()
     private lateinit var locationRepository: LocationRepository
     private lateinit var notificationManager: NotificationManager;
 
+    private val _location = MutableStateFlow<Location?>(null)
+    val location: StateFlow<Location?> = _location
+
+    private var lastLocation: Location? = null
+
+    private lateinit var locationClient: LocationClient
+
     //Not Bind
     override fun onBind(p0: Intent?): IBinder? {
        return null;
@@ -55,6 +70,12 @@ class LocationService : Service()
 
     override fun onCreate() {
         super.onCreate()
+
+        locationClient = DefaultLocationClient(
+            applicationContext,
+            LocationServices.getFusedLocationProviderClient(applicationContext)
+        )
+
         repository = (application as PostMeApplication).userRepo
         deliveryRepository = (application as PostMeApplication).deliveryRepo
         locationRepository = (application as PostMeApplication).locationRepo
@@ -62,29 +83,63 @@ class LocationService : Service()
     }
 
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
-        locationRepository.startLocationUpdates()
-        sendLocationRoutine();
-        startForeground(1,createNotification(this, "Location are tracking","Location Tracking", "locationservicechannel"))
+       start()
         return START_STICKY
     }
 
-    private fun sendLocationRoutine()
+
+    private fun start()
     {
+
+        locationClient
+            .getLocationUpdates(3000L)
+            .catch { e -> e.printStackTrace() }
+            .onEach { loc ->
+                locationRepository.updateLocation(loc);
+                lastLocation = loc;
+                deliveryRepository.updateQueryCenter(GeoPoint(loc.latitude,loc.longitude));
+            }
+            .launchIn(serviceScope)
+
+
+        sendLocationRoutine();
+
+        startForeground(1,createNotification(this, "Location are tracking","Location Tracking", "locationservicechannel"))
+    }
+
+    //private fun
+
+    private fun sendLocationRoutine() {
+
         serviceScope.launch {
             while (isActive) {
-                delay(60_000)
+                delay(30_000L)
+                lastLocation?.let { l ->
+                    try {
+                        var loc = GeoPoint(l.latitude, l.longitude);
+                        repository.sendLocation(loc)
+                        deliveryRepository.sendLocationDelivery(loc);
+                    } catch (e: Exception) {
 
-                var l = locationRepository.location.value;
-                if(l==null)
-                    continue;
-
-                var loc = GeoPoint(l.latitude,l.longitude);
-
-                repository.sendLocation(loc)
-                deliveryRepository.sendLocationDelivery(loc);
-                deliveryRepository.updateQueryCenter(loc);
+                    }
+                }
             }
         }
+    }
+
+    private fun stop() {
+        stopForeground(STOP_FOREGROUND_REMOVE)
+        stopSelf()
+    }
+
+    override fun stopService(name: Intent?): Boolean {
+        stop()
+        return super.stopService(name)
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+        serviceScope.cancel()
     }
 
     private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {

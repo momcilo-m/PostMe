@@ -21,38 +21,43 @@ class LocationRepository(
     private val _location  = MutableLiveData<Location>()
     val location: LiveData<Location> = _location
 
-    private var fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.app)
-
-    @SuppressLint("MissingPermission")
-    fun startLocationUpdates() {
-
-        val request = LocationRequest.Builder(
-            Priority.PRIORITY_HIGH_ACCURACY,
-            10_000L
-        ).setMinUpdateIntervalMillis(5_000L)
-            .build()
-
-
-        val locationListener = object : LocationListener
-        {
-            @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
-            override fun onLocationChanged(loc: Location) {
-                val current = _location.value
-                if (current == null || current.latitude != loc.latitude || current.longitude != loc.longitude) {
-                    _location.value = loc
-                }
-            }
-        }
-
-        fusedLocationClient.requestLocationUpdates(
-            request,
-            locationListener,
-            Looper.getMainLooper()
-        )
+    fun updateLocation(loc:Location)
+    {
+        _location.postValue(loc)
     }
 
-    fun stopLocationUpdates() {
-        fusedLocationClient.removeLocationUpdates(object : LocationCallback(){})
-    }
+//    private var fusedLocationClient = LocationServices.getFusedLocationProviderClient(this.app)
+//
+//    @SuppressLint("MissingPermission")
+//    fun startLocationUpdates() {
+//
+//        val request = LocationRequest.Builder(
+//            Priority.PRIORITY_HIGH_ACCURACY,
+//            10_000L
+//        ).setMinUpdateIntervalMillis(5_000L)
+//            .build()
+//
+//
+//        val locationListener = object : LocationListener
+//        {
+//            @RequiresApi(Build.VERSION_CODES.UPSIDE_DOWN_CAKE)
+//            override fun onLocationChanged(loc: Location) {
+//                val current = _location.value
+//                if (current == null || current.latitude != loc.latitude || current.longitude != loc.longitude) {
+//                    _location.value = loc
+//                }
+//            }
+//        }
+//
+//        fusedLocationClient.requestLocationUpdates(
+//            request,
+//            locationListener,
+//            Looper.getMainLooper()
+//        )
+//    }
+//
+//    fun stopLocationUpdates() {
+//        fusedLocationClient.removeLocationUpdates(object : LocationCallback(){})
+//    }
 
 }

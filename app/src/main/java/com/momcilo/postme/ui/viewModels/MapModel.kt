@@ -88,9 +88,9 @@ class MapViewModel(
                     if (!exists) {
                         _markers.add(marker)
                     }
+                    sendNotification(app,"New delivery is near you","Slow down boy","geo-document")
                 }
 
-                sendNotification(app,"New delivery is near you","Slow down boy","geo-document")
 
             };
         }
@@ -146,10 +146,10 @@ class MapViewModel(
     private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {
 
         return NotificationCompat.Builder(context, channel)
-            .setSmallIcon(R.drawable.baseline_share_location_24)
+            .setSmallIcon(R.drawable.baseline_local_shipping_24)
             .setContentTitle(title)
             .setContentText(message)
-            .setPriority(NotificationCompat.PRIORITY_LOW)
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
             //.setOngoing(true)
             .build()
     }
