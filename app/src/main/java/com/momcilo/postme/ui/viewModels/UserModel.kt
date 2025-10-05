@@ -2,8 +2,6 @@ package com.momcilo.postme.ui.viewModels
 
 import android.net.Uri
 import android.util.Log
-import androidx.activity.ComponentActivity
-import androidx.compose.runtime.CompositionContext
 import androidx.compose.runtime.MutableState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -20,8 +18,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import androidx.core.net.toUri
-import androidx.lifecycle.asFlow
 import com.momcilo.postme.data.cache.MarkerCache
+import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.asSharedFlow
 
 class UserViewModel(
     private val context: PostMeApplication,
@@ -39,6 +38,9 @@ class UserViewModel(
 
     var currentUser by mutableStateOf(User());
 
+    //Buffer za snack bar
+    private val _toastEvent = MutableSharedFlow<String>()
+    val toastEvent = _toastEvent.asSharedFlow()
 
     private val _users = MutableStateFlow<List<User>>(emptyList())
     val users: StateFlow<List<User>> = _users
@@ -49,15 +51,9 @@ class UserViewModel(
             .onSuccess { user->
                 _authState.value = AuthState.Authenticated(user);
                 currentUser = user;
-                Log.d("AUTH",user.email)
-                Log.d("AUTH",user.name)
-                Log.d("AUTH",user.photo)
             }
             .onFailure { e->
                 _authState.value = AuthState.Unauthenticated
-                Log.d("AUTH","NISI AUTH")
-                Log.d("AUTH","$e")
-
             }
 
             userRepo.trackUser()
@@ -65,7 +61,6 @@ class UserViewModel(
             userRepo.users.observeForever { list ->
                 _users.value = list
             }
-
         }
     }
 
@@ -82,10 +77,12 @@ class UserViewModel(
 
             res.onSuccess {user->
                 _authState.value = AuthState.RegistrationSuccess(user?.uid ?: "", user?.email ?: email, false);
+                clearUserInput()
             }
 
             res.onFailure {error ->
                 _authState.value = AuthState.RegistrationFailed(email,error.localizedMessage?:"Account not created");
+                _toastEvent.emit(error.localizedMessage ?: "Error while register")
             }
         }
     }
@@ -103,6 +100,7 @@ class UserViewModel(
 
             res.onFailure{e->
                 _authState.value = AuthState.Unauthenticated
+                _toastEvent.emit(e.localizedMessage ?: "Error while login")
             }
         }
     }
@@ -118,21 +116,19 @@ class UserViewModel(
             }
 
             MarkerCache.clear()
+            clearUserInput()
         }
     }
 
-    fun getUsers()
+    fun clearUserInput()
     {
-//        viewModelScope.launch {
-//            userRepo.getUsers()
-//                .onSuccess { data->
-//                    _users.value += data
-//                }
-//                .onFailure {
-//
-//                }
-//        }
+        name = ""
+        email = ""
+        password = ""
+        phone = ""
+        imageUri.value = "android.resource://${context.packageName}/${R.mipmap.profile}".toUri()
     }
+
 
     fun transferPoints(name: String, points:Int=0)
     {
@@ -143,11 +139,11 @@ class UserViewModel(
             val res = userRepo.sendPoints(name,points)
 
             res.onSuccess {
-                Log.d("POINTS", "POINTS ARE SEND")
+                _toastEvent.emit("Points are successfully send")
             }
 
             res.onFailure {e->
-                Log.d("POINTS", e.localizedMessage ?: "Something went wrong")
+                _toastEvent.emit(e.localizedMessage ?: "Error while sending points")
             }
         }
     }

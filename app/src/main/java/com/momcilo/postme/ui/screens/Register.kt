@@ -1,6 +1,7 @@
 package com.momcilo.postme.ui.screens
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
@@ -16,11 +17,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextField
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.input.ImeAction
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.unit.dp
@@ -49,21 +53,33 @@ fun RegisterScreen(userViewModel: UserViewModel)
 fun RegisterFields(viewModel:UserViewModel)
 {
 
+    val context = LocalContext.current
+    val toastEvent = viewModel.toastEvent.collectAsState(initial = null)
+
+    LaunchedEffect(toastEvent.value) {
+        toastEvent.value?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Column {
         TextField(
             value = viewModel.name,
             label = { Text("Enter your name") },
             onValueChange = {newText -> viewModel.name = newText},
+            singleLine = true
         )
         TextField(
             value = viewModel.email,
             label = { Text("Enter your email") },
             onValueChange = {newText -> viewModel.email = newText},
+            singleLine = true
         )
         TextField(
             value = viewModel.password,
             label = { Text("Enter your password") },
-            onValueChange = {newText -> viewModel.password = newText}
+            onValueChange = {newText -> viewModel.password = newText},
+            singleLine = true
         )
         TextField(
             value = viewModel.phone,

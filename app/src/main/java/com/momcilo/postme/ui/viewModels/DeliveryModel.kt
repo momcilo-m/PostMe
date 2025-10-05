@@ -25,20 +25,24 @@ class DeliveryViewModel(
 
     init {
         viewModelScope.launch {
-
-            deliveryRepository.loadDeliveryToFinish()
-                .onSuccess { markers->
-                    _markers.clear()
-                    _markers.addAll(markers);
-                    MarkerCache.clear()
-                    MarkerCache.addAll(markers);
-                }
-                .onFailure {err->
-                    Log.d("DELIVERY",err.toString())
-                }
-
+            loadDelToFinish()
         }
     }
+
+    suspend fun loadDelToFinish()
+    {
+        deliveryRepository.loadDeliveryToFinish()
+            .onSuccess { markers->
+                _markers.clear()
+                _markers.addAll(markers);
+                MarkerCache.clear()
+                MarkerCache.addAll(markers);
+            }
+            .onFailure {err->
+                Log.d("DELIVERY",err.toString())
+            }
+    }
+
 
     fun finishDelivery(id: String)
     {

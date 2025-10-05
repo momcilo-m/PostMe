@@ -8,6 +8,7 @@ import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.tasks.await
 import android.net.Uri
 import android.util.Log
+import androidx.core.text.isDigitsOnly
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
 import com.google.firebase.database.DatabaseError
@@ -23,6 +24,24 @@ class UserRepository(
 ) {
 
     suspend fun registerUserWithEmail(user: User, password: String,photo:Uri?): Result<FirebaseUser?> {
+
+        if(user.email == "" || user.name == "" || user.phone == "" || user.username == "")
+        {
+            return Result.failure(Exception("Email, Name, Phone, Username are required"))
+        }
+
+        if(!user.phone.isDigitsOnly())
+        {
+            //Broj mozda sadrzi plus ili nije validan
+            if(!user.phone.startsWith("+") && user.phone.drop(1).isDigitsOnly())
+                return Result.failure(Exception("Phone must be a number"))
+        }
+
+        if(user.points != 0)
+        {
+            return Result.failure(Exception(":)"))
+        }
+
         return try {
             val res = auth.createUserWithEmailAndPassword(user.email,password).await()
             val uid = res.user?.uid ?: throw Exception("User not registered")
@@ -67,8 +86,8 @@ class UserRepository(
             val user = db.child("users").child(firebaseUser.uid).get().await()
             user.getValue(User::class.java)
             Result.success(convertResponse(user))
-        } catch (e: Exception) {
-            Result.failure(e)
+        } catch (_: Exception) {
+            Result.failure(Exception("Incorrect email or password"))
         }
     }
 
@@ -139,25 +158,6 @@ class UserRepository(
         })
 
     }
-
-//    suspend fun getUsers(): Result<List<User>>
-//    {
-//        return try {
-//
-//            var userDoc = db.child("users")
-//                //.orderByChild("points")
-//                .get().await();
-//
-//            var users = userDoc.children.mapNotNull { user -> user.getValue(User::class.java) }.sortedByDescending { it.points }
-//
-//            Result.success(users);
-//        }
-//        catch (e: Exception)
-//        {
-//            Result.failure(e);
-//        }
-//
-//    }
 
     suspend fun sendPoints(username: String, points: Int): Result<Boolean>
     {

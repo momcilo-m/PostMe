@@ -77,7 +77,6 @@ fun MapScreen(locVM: MapViewModel, fromHome: Boolean)
 
     fun animateCamera(position: LatLng)
     {
-        Log.d("MARKER","VRACANJE ${position.latitude}, ${position.longitude}")
         if(position.latitude != 0.0 && position.longitude !=0.0) {
             scope.launch {
                 cameraPositionState.animate(
@@ -99,23 +98,12 @@ fun MapScreen(locVM: MapViewModel, fromHome: Boolean)
     LaunchedEffect(location) {
         if(fromHome && locVM.showMarker)
         {
-            Log.d("MAPDEBUG","PRE ANIM MARKER "+cameraPositionState.position.toString())
-            Log.d("MAPDEBUG","PRE ANIM MARKER "+locVM.deliveryLocation.toString())
-            Log.d("MAPDEBUG","PRE ANIM MARKER "+location.toString())
-            Log.d("MAPDEBUG","PRE ANIM MARKER "+!locVM.cameraSet)
-
-            //Log.d("MAPDEBUG",locVM.deliveryLocation.latitude.toString());
             animateCamera(locVM.deliveryLocation)
             locVM.cameraSet = true;
             locVM.showMarker = false;
         }
         else if(location != null && !locVM.cameraSet)
         {
-            Log.d("MAPDEBUG","PRE ANIM USER "+cameraPositionState.position.toString())
-            Log.d("MAPDEBUG","PRE ANIM USER "+locVM.deliveryLocation.toString())
-            Log.d("MAPDEBUG","PRE ANIM USER "+location.toString())
-            Log.d("MAPDEBUG","PRE ANIM USER "+!locVM.cameraSet)
-            //Log.d("MAPDEBUG", location!!.latitude.toString());
             location?.let {
                 cameraPositionState.animate(
                     update = CameraUpdateFactory.newLatLngZoom(
@@ -361,7 +349,6 @@ fun PickLocation(
 }
 
 //Dialog for map filter
-
 @Composable
 fun FilterMap(
     username: MutableState<String>,

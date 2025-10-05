@@ -79,7 +79,6 @@ class MapViewModel(
             }
             res.onFailure {fail->
                 _toastEvent.tryEmit(fail.localizedMessage ?: fail.toString());
-                //showToast(fail.localizedMessage ?: fail.toString())
             }
 
             repository.startGeoQuery(){ marker ->

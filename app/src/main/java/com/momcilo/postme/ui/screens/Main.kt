@@ -1,5 +1,6 @@
 package com.momcilo.postme.ui.screens
 
+import android.util.Log
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material.icons.Icons
@@ -53,7 +54,7 @@ fun NavHostComposable(
         startDestination = start,
         modifier = Modifier.padding(padding)
     ) {
-        composable<Screen.Login> { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
+        composable<Screen.Login> { LoginScreen(vm, goToRegister = {navController.navigate(Screen.Register)}) }
         composable<Screen.Home> { HomeScreen(vm = dVm, map = locVm, nav = navController) }
         composable<Screen.Profile> { ProfileScreen(vm) }
         composable<Screen.Register> { RegisterScreen(userViewModel = vm) }
@@ -63,13 +64,6 @@ fun NavHostComposable(
             val args = it.toRoute<Screen.Map>()
             MapScreen(locVm,args.fromHome)
         }
-//        composable(
-//            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType; defaultValue="" }),
-//            route = "map/{deliveryId}"
-//        ) { backStackEntry ->
-//            val deliveryId = backStackEntry.arguments?.getString("deliveryId") ?: ""
-//            MapScreen(locVm, lVm,deliveryId)
-//        }
     }
 }
 
@@ -82,7 +76,7 @@ fun NavigationBarComposable(
     NavigationBar {
         paths.forEach { item->
             NavigationBarItem(
-                selected = currentRoute == item.screen.javaClass.simpleName,
+                selected = currentRoute?.split(".")?.last() == item.name,
                 onClick = {
                     navController.navigate(item.screen)
                 },
@@ -105,7 +99,7 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
 {
     val navController = rememberNavController();
     val state = vm.authState.collectAsState()
-    val startScreen = "loading";
+    val startScreen = Screen.Loading;
 
     val navBackStackEntry = navController.currentBackStackEntryAsState()
     val currentRoute = navBackStackEntry.value?.destination?.route
@@ -121,6 +115,7 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
         if(state.value is AuthState.Authenticated)
         {
             navController.navigate(Screen.Home){popUpTo(0){inclusive = true} }
+            dVm.loadDelToFinish()
         }
         else if(state.value is AuthState.Unauthenticated)
         {
@@ -133,13 +128,12 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
 
     Scaffold(
         bottomBar = {
-            if(currentRoute != Screen.Login.javaClass.simpleName && currentRoute != Screen.Register.javaClass.simpleName)
+            if(currentRoute?.split(".")?.last() != Screen.Login.javaClass.simpleName && currentRoute?.split(".")?.last() != Screen.Register.javaClass.simpleName)
             {
                 NavigationBarComposable(paths,currentRoute,navController)
             }
-
         }
     ) { innerPadding->
-        NavHostComposable(navController, Screen.Loading,innerPadding,vm,locVm,dVm)
+        NavHostComposable(navController, startScreen,innerPadding,vm,locVm,dVm)
     }
 }
