@@ -15,7 +15,7 @@ data class Marker(
     var takeAt: Timestamp = Timestamp.now(),
 
     var id:String="",
-    val status : String = "pending",
+    var status : String = "pending",
     val deliverer: String = "",
 
 

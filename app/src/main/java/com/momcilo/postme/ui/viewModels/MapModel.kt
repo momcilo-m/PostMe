@@ -43,10 +43,12 @@ import com.momcilo.postme.data.entities.Position
 import com.momcilo.postme.data.repositories.DeliveryRepository
 import com.momcilo.postme.data.repositories.LocationRepository
 import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.Channel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asSharedFlow
+import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.launch
 
 class MapViewModel(
@@ -58,13 +60,11 @@ class MapViewModel(
 
     var notificationManager = app.getSystemService(NOTIFICATION_SERVICE) as NotificationManager
 
-    //(
-    //    replay = 0,
-    //    extraBufferCapacity = 1
-    //)
-    private val _toastEvent = MutableSharedFlow<String>()
+    private val _toastEvent = MutableSharedFlow<String>(
+        replay = 0,
+        extraBufferCapacity = 1
+    )
     val toastEvent = _toastEvent.asSharedFlow()
-
 
     init {
         viewModelScope.launch {
@@ -78,7 +78,8 @@ class MapViewModel(
                 _markers.addAll(result)
             }
             res.onFailure {fail->
-                _toastEvent.emit(fail.localizedMessage ?: fail.toString());
+                _toastEvent.tryEmit(fail.localizedMessage ?: fail.toString());
+                //showToast(fail.localizedMessage ?: fail.toString())
             }
 
             repository.startGeoQuery(){ marker ->
@@ -88,10 +89,8 @@ class MapViewModel(
                     if (!exists) {
                         _markers.add(marker)
                     }
-                    sendNotification(app,"New delivery is near you","Slow down boy","geo-document")
+                    sendNotification(app,"New delivery is near you","Slow down","geo-document")
                 }
-
-
             };
         }
     }
@@ -115,14 +114,20 @@ class MapViewModel(
             res.onSuccess { res->
                 val marker = _markers.find { it.id == id }
 
+
                 if(marker != null)
+                {
+                    marker.status = "delivery"
                     MarkerCache.add(marker);
+                }
 
                 _markers.remove(marker)
+                //showToast("You are successfully take a delivery")
                 _toastEvent.emit("You are successfully take a delivery");
             }
 
             res.onFailure {e->
+                //showToast(e.localizedMessage ?: e.toString())
                 _toastEvent.emit(e.localizedMessage ?: e.toString());
             }
         }

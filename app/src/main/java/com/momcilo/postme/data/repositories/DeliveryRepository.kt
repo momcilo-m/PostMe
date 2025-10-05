@@ -147,7 +147,7 @@ class DeliveryRepository(
 
             if (!doc.exists()) {
                throw Exception("Delivery doesn't exist")
-           }
+            }
             else if(doc.getString("deliverer")!= "" )
             {
                 Log.d("FIN_DEL", doc.getString("deliverer").toString())
@@ -233,8 +233,11 @@ class DeliveryRepository(
             val optimalDistance = optimal["distanceMeters"]
             val optimalTime = optimal["durationSeconds"]
 
+            Log.d("SCORE","${optimalTime?.times(1000L)} ms : $optimalDistance m -- $distance m : ${Timestamp.now().toDate().time - delivery.takeAt.toDate().time}")
+
             //Vremena se konvertuju u ms
             var score = calculateScore(optimalDistance ?: 0, (optimalTime ?: 0) * 1000L, distance.toLong(), Timestamp.now().toDate().time - delivery.takeAt.toDate().time);
+            Log.d("SCORE","$score")
 
             //Upisivanje u bazu da je dostava gotova
             doc.reference.update(
@@ -306,7 +309,7 @@ class DeliveryRepository(
                 ((realTime * 100 / optimalTime).toInt() - 100)/100;
 
         if (timePercentage == 1 && distancePercentage == 1)
-            return base + realDistance + realTime;
+            return base + (realDistance/1000.0) + (realTime/1000.0/60.0);
 
         val calcTime = (realTime / 1000.0 / 60.0) - (realTime / 1000.0 / 60.0) * timePercentage
         val calcDistance = (realDistance / 1000.0) - (realDistance / 1000.0) * distancePercentage
@@ -386,6 +389,10 @@ class DeliveryRepository(
 
     //Slanje lokacije za user-delivery
     suspend fun sendLocationDelivery(location:GeoPoint) {
+
+        if(auth.currentUser == null)
+            return;
+
         val updates = mutableMapOf<String, Any>()
 
         if(MarkerCache.send.isEmpty())
@@ -399,7 +406,7 @@ class DeliveryRepository(
         }
 
         for (marker in MarkerCache.send) {
-            val path = "user-delivery/${marker.deliverer}-${marker.id}/${System.currentTimeMillis()}"
+            val path = "user-delivery/${auth.currentUser!!.uid}-${marker.id}/${System.currentTimeMillis()}"
             val value = UserDelivery(
                 user = marker.user,
                 delivery = marker.id,
@@ -430,7 +437,7 @@ class DeliveryRepository(
                 location: GeoPoint
             )
             {
-                Log.d("GEOQUERY","ENTER")
+
                 val marker = documentSnapshot.toObject(Marker::class.java)?.copy(id = documentSnapshot.id)
                 Log.d("GEOQUERY","ENTER ${marker?.title}")
                 if(marker!=null)
@@ -441,10 +448,7 @@ class DeliveryRepository(
                 Log.d("GEOQUERY","EXIT")
             }
 
-            override fun onDocumentMoved(
-                documentSnapshot: DocumentSnapshot,
-                location: GeoPoint
-            ) {
+            override fun onDocumentMoved(documentSnapshot: DocumentSnapshot, location: GeoPoint) {
                 Log.d("GEOQUERY","MOVE")
             }
 

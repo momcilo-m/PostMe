@@ -1,6 +1,5 @@
 package com.momcilo.postme.ui.viewModels
 
-import android.R
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.compose.runtime.mutableStateListOf
@@ -14,9 +13,9 @@ import com.momcilo.postme.data.repositories.UserRepository
 import kotlinx.coroutines.launch
 
 class DeliveryViewModel(
-//    private val app: ComponentActivity,
-    private val deliveryRepository: DeliveryRepository
+    //    private val app: ComponentActivity,
     //    private val userRepository: UserRepository,
+    private val deliveryRepository: DeliveryRepository
 ): ViewModel()
 {
 
@@ -49,6 +48,7 @@ class DeliveryViewModel(
                     Log.d("DELIVERY","FINISH DEL")
                     _markers.removeIf { it.id == id }
                     MarkerCache.send.removeIf { it.id == id }
+                    MarkerCache.temp.removeIf { it.id == id  }
                 }
                 .onFailure {e->
                     Log.d("DELIVERY","FAIL FINISH $e")
