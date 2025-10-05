@@ -145,7 +145,7 @@ class MapViewModel(
     fun showDeliveryLocation(position: Position, address: Position) {
         returnLocation = LatLng(position.latitude, position.longitude)
         deliveryLocation = LatLng(address.latitude, address.longitude)
-        showMarker = true;
+        showMarker = true
     }
 
     private fun createNotification(context: Context, message: String,title: String, channel:String): Notification {

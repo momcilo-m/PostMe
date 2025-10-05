@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     id("com.google.gms.google-services")
+    alias(libs.plugins.kotlin.serialization)
 }
 
 android {
@@ -102,8 +103,11 @@ dependencies {
 
 
     // Navigation
-    val nav_version = "2.9.3"
-    implementation("androidx.navigation:navigation-compose:$nav_version")
+    //val nav_version = "2.9.3"
+    //implementation("androidx.navigation:navigation-compose:$nav_version")
+
+    implementation(libs.navigation.compose)
+    implementation(libs.kotlinx.serialization.json)
 
     // Location
     implementation("com.google.android.gms:play-services-location:21.3.0")

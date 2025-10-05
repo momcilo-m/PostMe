@@ -58,6 +58,7 @@ import com.google.maps.android.compose.MarkerState
 import com.google.maps.android.compose.rememberCameraPositionState
 import com.momcilo.postme.R
 import com.momcilo.postme.data.entities.Position
+import com.momcilo.postme.data.entities.TempLoc
 import com.momcilo.postme.ui.viewModels.MapViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
@@ -65,7 +66,7 @@ import kotlinx.coroutines.launch
 
 @SuppressLint("MissingPermission")
 @Composable
-fun MapScreen(locVM: MapViewModel)
+fun MapScreen(locVM: MapViewModel, fromHome: Boolean)
 {
     val location by locVM.userLocation.asFlow().collectAsState(initial = null)
     val scope = rememberCoroutineScope()
@@ -96,7 +97,7 @@ fun MapScreen(locVM: MapViewModel)
     }
 
     LaunchedEffect(location) {
-        if(locVM.deliveryLocation != LatLng(0.0,0.0) && locVM.showMarker)
+        if(fromHome && locVM.showMarker)
         {
             Log.d("MAPDEBUG","PRE ANIM MARKER "+cameraPositionState.position.toString())
             Log.d("MAPDEBUG","PRE ANIM MARKER "+locVM.deliveryLocation.toString())

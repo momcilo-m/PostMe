@@ -1,8 +1,11 @@
 package com.momcilo.postme.data.entities
 
 import android.location.Location
+import kotlinx.serialization.Serializable
 
 //Zahteva zbog serijalizacije GeoPoint tj zahteva default konstruktor koji GeoPoint nema
+
+@Serializable
 data class TempLoc(
     val latitude: Double = 0.0,
     val longitude: Double = 0.0

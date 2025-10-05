@@ -111,7 +111,7 @@ fun HomeScreen(
             confirmButton = {
                 TextButton(onClick = {
                     map.showDeliveryLocation(Position(), delivery.address)
-                    nav.navigate("map")
+                    nav.navigate(Screen.Map(true))
                 }) {
                     Text("Show on Map")
                 }

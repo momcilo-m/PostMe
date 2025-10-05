@@ -31,7 +31,9 @@ import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import androidx.navigation.navArgument
+import androidx.navigation.toRoute
 import com.momcilo.postme.data.entities.NavItem
+import com.momcilo.postme.data.entities.TempLoc
 import com.momcilo.postme.data.states.AuthState
 import com.momcilo.postme.ui.viewModels.DeliveryViewModel
 import com.momcilo.postme.ui.viewModels.MapViewModel
@@ -40,7 +42,7 @@ import com.momcilo.postme.ui.viewModels.UserViewModel
 @Composable
 fun NavHostComposable(
     navController: NavHostController,
-    start: String,
+    start: Screen,
     padding: PaddingValues,
     vm: UserViewModel,
     locVm: MapViewModel,
@@ -51,13 +53,16 @@ fun NavHostComposable(
         startDestination = start,
         modifier = Modifier.padding(padding)
     ) {
-        composable("login") { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
-        composable("home") { HomeScreen(vm = dVm, map = locVm, nav = navController) }
-        composable("profile") { ProfileScreen(vm) }
-        composable("register") { RegisterScreen(userViewModel = vm) }
-        composable("loading") { LoadingScreen() }
-        composable("leaderBoard") { LeaderboardScreen(vm) }
-        composable("map") { MapScreen(locVm) }
+        composable<Screen.Login> { LoginScreen(vm, goToRegister = {navController.navigate("register")}) }
+        composable<Screen.Home> { HomeScreen(vm = dVm, map = locVm, nav = navController) }
+        composable<Screen.Profile> { ProfileScreen(vm) }
+        composable<Screen.Register> { RegisterScreen(userViewModel = vm) }
+        composable<Screen.Loading> { LoadingScreen() }
+        composable<Screen.Leaderboard> { LeaderboardScreen(vm) }
+        composable<Screen.Map> {
+            val args = it.toRoute<Screen.Map>()
+            MapScreen(locVm,args.fromHome)
+        }
 //        composable(
 //            arguments = listOf(navArgument("deliveryId") { type = NavType.StringType; defaultValue="" }),
 //            route = "map/{deliveryId}"
@@ -70,42 +75,25 @@ fun NavHostComposable(
 
 @Composable
 fun NavigationBarComposable(
-    paths:List<NavItem>,
+    paths:List<CustomNavItem>,
     currentRoute: String?,
     navController: NavController)
 {
     NavigationBar {
         paths.forEach { item->
             NavigationBarItem(
-                selected = currentRoute == item.path,
+                selected = currentRoute == item.screen.javaClass.simpleName,
                 onClick = {
-                    navController.navigate(item.path) {
-                        launchSingleTop = true
-                        restoreState = true
-                        popUpTo(navController.graph.startDestinationId) { saveState = true }
-                    }
-
+                    navController.navigate(item.screen)
                 },
                 label = {Text(item.name)},
                 icon = {
-                    BadgedBox(
-                        badge = {
-                            if(item.countNotification != null)
-                            {
-                                Badge(){Text(item.countNotification.toString())}
-                            }
-                            else if(item.notification)
-                            {
-                                Badge()
-                            }
-                        }
+
+                    Icon(
+                        imageVector = if(currentRoute == item.screen.javaClass.simpleName) item.selectedIcon else item.unselectedIcon,
+                        contentDescription = item.name
                     )
-                    {
-                        Icon(
-                            imageVector = if(currentRoute == item.path) item.selectedIcon else item.unselectedIcon,
-                            contentDescription = item.name
-                        )
-                    }
+
                 }
             )
         }
@@ -123,35 +111,35 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
     val currentRoute = navBackStackEntry.value?.destination?.route
 
     val paths = listOf(
-        NavItem("Home","home", Icons.Filled.Home, Icons.Outlined.Home),
-        NavItem("Map","map", Icons.Filled.Place, Icons.Outlined.Place),
-        NavItem("Leaderboard","leaderboard", Icons.Filled.Menu, Icons.Outlined.Menu),
-        NavItem("Profile","profile", Icons.Filled.Person, Icons.Outlined.Person)
+        CustomNavItem("Home", Screen.Home, Icons.Filled.Home, Icons.Outlined.Home),
+        CustomNavItem("Map", Screen.Map(false), Icons.Filled.Place, Icons.Outlined.Place),
+        CustomNavItem("Leaderboard", Screen.Leaderboard, Icons.Filled.Menu, Icons.Outlined.Menu),
+        CustomNavItem("Profile", Screen.Profile, Icons.Filled.Person, Icons.Outlined.Person)
     )
 
     LaunchedEffect(state.value) {
         if(state.value is AuthState.Authenticated)
         {
-            navController.navigate("home"){popUpTo(0){inclusive = true} }
+            navController.navigate(Screen.Home){popUpTo(0){inclusive = true} }
         }
         else if(state.value is AuthState.Unauthenticated)
         {
-            navController.navigate("login"){popUpTo(0){inclusive = true} }
+            navController.navigate(Screen.Login){popUpTo(0){inclusive = true} }
         }
         else if(state.value is AuthState.RegistrationSuccess) {
-            navController.navigate("login") { popUpTo(0) { inclusive = true } }
+            navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } }
         }
     }
 
     Scaffold(
         bottomBar = {
-            if(currentRoute != "login" && currentRoute != "register")
+            if(currentRoute != Screen.Login.javaClass.simpleName && currentRoute != Screen.Register.javaClass.simpleName)
             {
                 NavigationBarComposable(paths,currentRoute,navController)
             }
 
         }
     ) { innerPadding->
-        NavHostComposable(navController,"loading",innerPadding,vm,locVm,dVm)
+        NavHostComposable(navController, Screen.Loading,innerPadding,vm,locVm,dVm)
     }
 }
