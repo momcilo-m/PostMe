@@ -1,6 +1,7 @@
 package com.momcilo.postme.ui.screens
 
 import android.net.Uri
+import android.widget.Toast
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
@@ -26,7 +27,9 @@ import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.MutableState
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -48,12 +51,17 @@ fun ProfileScreen(
     viewModel:UserViewModel
 )
 {
-
     val photoUri: Uri = viewModel.currentUser.photo.toUri()
 
-    //val context = LocalContext.current
-//    var nickname by remember { mutableStateOf("") }
-//    var points by remember { mutableStateOf("") }
+    val context = LocalContext.current
+    val toastEvent = viewModel.toastEvent.collectAsState(initial = null)
+
+    LaunchedEffect(toastEvent.value) {
+        toastEvent.value?.let { message ->
+            Toast.makeText(context, message, Toast.LENGTH_SHORT).show()
+        }
+    }
+
 
     Column(
         modifier = Modifier

@@ -167,6 +167,7 @@ class UserRepository(
             val userSnapshot = db.child("users").child(uid).get().await()
             val user = convertResponse(userSnapshot)
 
+            Log.d("POINTS","REC ${user.points}")
             if(user.points >= points)
             {
                 val receiverSnapshot = db.child("users").orderByChild("name").equalTo(username).get().await()
@@ -184,20 +185,20 @@ class UserRepository(
                     )
 
                     db.updateChildren(updates).await()
-                    Result.success(true);
+                    return Result.success(true);
                 }
                 else
-                    Result.failure(Exception("User not found"));
+                    throw Exception("User not found");
             }
             else
             {
-                Result.failure(Exception("You don't have enough points"));
+                throw Exception("You don't have enough points");
             }
 
         }
-        catch (_: Exception)
+        catch (e: Exception)
         {
-            Result.failure(Exception("Something went wrong with send points"));
+            return Result.failure(e);
         }
     }
 }

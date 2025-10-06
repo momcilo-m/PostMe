@@ -28,8 +28,6 @@ import kotlin.jvm.java
 
 class MainActivity : ComponentActivity() {
 
-    //val postMe = (application as PostMeApplication);
-
     private val userViewModel : UserViewModel by viewModels()
     {
         UserViewModelFactory((application as PostMeApplication),(application as PostMeApplication).userRepo);

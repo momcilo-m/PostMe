@@ -26,6 +26,7 @@ import kotlin.Result
 import com.google.maps.DirectionsApi
 import com.google.maps.model.LatLng
 import com.google.maps.model.TravelMode
+import com.momcilo.postme.data.entities.User
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
@@ -341,14 +342,23 @@ class DeliveryRepository(
         var query:Query = db.collection("delivery")
 
         if (user != null && user!="") {
-            query = query.whereEqualTo("user", user)
+            val usrsh = userDb.child("users").orderByChild("name").equalTo(user).get().await()
+            val usr = usrsh.children.firstOrNull()
+
+            if(usr == null)
+                throw Exception("User Not found");
+
+            val userName = usr.key
+
+            Log.d("FILTER",userName.toString())
+
+            query = query.whereEqualTo("user", userName.toString())
         }
 
-        if (status != null && status !="") {
-            query = query.whereEqualTo("status", status)
-        }
-        else
-            query = query.whereNotEqualTo("status","delivered")
+        query = if (status != null && status !="") {
+            query.whereEqualTo("status", status)
+        } else
+            query.whereNotEqualTo("status","delivered")
 
         val res = if(radius!=null && radius!="")
         {
