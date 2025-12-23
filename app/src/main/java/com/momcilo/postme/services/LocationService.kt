@@ -153,10 +153,10 @@ class LocationService : Service()
             .build()
     }
 
-    private fun sendNotification(context: Context, message: String,title: String, channel:String) {
-        val notificationId = System.currentTimeMillis().toInt()
-        notificationManager.notify(notificationId, createNotification(context, message,title, channel))
-    }
+//    private fun sendNotification(context: Context, message: String,title: String, channel:String) {
+//        val notificationId = System.currentTimeMillis().toInt()
+//        notificationManager.notify(notificationId, createNotification(context, message,title, channel))
+//    }
 
 
 }

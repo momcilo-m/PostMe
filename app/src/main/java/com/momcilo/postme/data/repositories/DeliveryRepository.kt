@@ -93,7 +93,7 @@ class DeliveryRepository(
         return total;
     }
 
-    fun createDelivery(delivery: Marker): Result<Boolean>
+    fun createDelivery(delivery: Marker): Result<Marker>
     {
         return try{
             val user =  auth.currentUser
@@ -119,15 +119,17 @@ class DeliveryRepository(
 
             val docRef = db.collection("delivery").document()
             delivery.id = docRef.id
+
             docRef.set(delivery)
                 .addOnSuccessListener {
                     Result.success(true)
                 }
 
-            Result.success(false);
+            Result.success(delivery);
         }
         catch (e: Exception)
         {
+            //Log.d("LAST",e.localizedMessage ?: "aa")
             Result.failure(e);
         }
     }

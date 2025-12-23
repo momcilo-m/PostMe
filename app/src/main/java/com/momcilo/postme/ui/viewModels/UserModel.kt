@@ -51,9 +51,11 @@ class UserViewModel(
             .onSuccess { user->
                 _authState.value = AuthState.Authenticated(user);
                 currentUser = user;
+                Log.d("LOGINUSER","AUTH SI NA STARTU")
             }
             .onFailure { e->
                 _authState.value = AuthState.Unauthenticated
+                Log.d("LOGINUSER","NISI AUTH NA STARTU")
             }
 
             userRepo.trackUser()
@@ -73,8 +75,8 @@ class UserViewModel(
     {
         val user = User(username = name, name=name, email = email, phone = phone)
         viewModelScope.launch {
+            _authState.value = AuthState.Loading;
             val res = userRepo.registerUserWithEmail(user,password,imageUri.value);
-
             res.onSuccess {user->
                 _authState.value = AuthState.RegistrationSuccess(user?.uid ?: "", user?.email ?: email, false);
                 clearUserInput()
@@ -94,11 +96,13 @@ class UserViewModel(
             val res = userRepo.loginUserWithEmail(email,password)
 
             res.onSuccess {user->
+                Log.d("LOGINUSER","PROSO JE U VM")
                 _authState.value = AuthState.Authenticated(user)
                 currentUser = user;
             }
 
             res.onFailure{e->
+                Log.d("LOGINUSER","NIJE PROSO U VM")
                 _authState.value = AuthState.Unauthenticated
                 _toastEvent.emit(e.localizedMessage ?: "Error while login")
             }

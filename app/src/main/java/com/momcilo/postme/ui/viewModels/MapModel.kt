@@ -73,7 +73,6 @@ class MapViewModel(
 
             val res = repository.loadPendingDeliveries();
             res.onSuccess {result->
-                Log.d("DELIVERY","STIGLE PORUDZBINE NA MAPI")
                 _markers.clear()
                 _markers.addAll(result)
             }
@@ -100,7 +99,7 @@ class MapViewModel(
             val res = repository.createDelivery(Marker("me",name, address,description,location))
 
             res.onSuccess {
-                marker -> _markers.add(Marker("me",name, address,description, location));
+                marker -> _markers.add(marker);
             }
         }
     }

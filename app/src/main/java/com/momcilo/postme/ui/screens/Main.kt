@@ -124,11 +124,23 @@ fun Main(vm: UserViewModel,locVm: MapViewModel,dVm: DeliveryViewModel)
         else if(state.value is AuthState.RegistrationSuccess) {
             navController.navigate(Screen.Login) { popUpTo(0) { inclusive = true } }
         }
+        else if(state.value is AuthState.Loading)
+        {
+            navController.navigate(Screen.Loading) { popUpTo(0) { inclusive = true } }
+        }
+        else if(state.value is AuthState.RegistrationFailed)
+        {
+            navController.navigate(Screen.Register) { popUpTo(0) { inclusive = true } }
+        }
     }
 
     Scaffold(
         bottomBar = {
-            if(currentRoute?.split(".")?.last() != Screen.Login.javaClass.simpleName && currentRoute?.split(".")?.last() != Screen.Register.javaClass.simpleName)
+            if(
+                currentRoute?.split(".")?.last() != Screen.Login.javaClass.simpleName &&
+                currentRoute?.split(".")?.last() != Screen.Register.javaClass.simpleName &&
+                currentRoute?.split(".")?.last() != Screen.Loading.javaClass.simpleName
+                )
             {
                 NavigationBarComposable(paths,currentRoute,navController)
             }

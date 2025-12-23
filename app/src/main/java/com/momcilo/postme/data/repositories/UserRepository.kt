@@ -46,16 +46,16 @@ class UserRepository(
             val res = auth.createUserWithEmailAndPassword(user.email,password).await()
             val uid = res.user?.uid ?: throw Exception("User not registered")
 
-            if(photo!=null)
-            {
-                val ref = storageDb.child("images/${user.email}-${System.currentTimeMillis()}.jpg")
-
-                ref.putFile(photo).await()
-
-                val downloadUrl = ref.downloadUrl.await()
-
-                user.photo = downloadUrl.toString()
-            }
+//            if(photo!=null)
+//            {
+//                val ref = storageDb.child("images/${user.email}-${System.currentTimeMillis()}.jpg")
+//
+//                ref.putFile(photo).await()
+//
+//                val downloadUrl = ref.downloadUrl.await()
+//
+//                user.photo = downloadUrl.toString()
+//            }
 
             db.child("users").child(uid).setValue(user).await()
             Result.success(res.user)
@@ -81,13 +81,17 @@ class UserRepository(
 
     suspend fun loginUserWithEmail(email: String, password: String): Result<User> {
         return try {
+
             val authResult = auth.signInWithEmailAndPassword(email, password).await()
             val firebaseUser = authResult.user ?: throw Exception("User not found")
             val user = db.child("users").child(firebaseUser.uid).get().await()
             user.getValue(User::class.java)
             Result.success(convertResponse(user))
-        } catch (_: Exception) {
-            Result.failure(Exception("Incorrect email or password"))
+
+        } catch (e: Exception) {
+
+            this.logout()
+            Result.failure(Exception(e.localizedMessage))
         }
     }
 
@@ -120,14 +124,18 @@ class UserRepository(
 
     private fun convertResponse(user: DataSnapshot): User
     {
-        return User(
-            email = user.child("email").value.toString(),
-            username = user.child("username").value.toString(),
-            name = user.child("name").value.toString(),
-            phone = user.child("phone").value.toString(),
-            photo = user.child("photo").value.toString(),
-            points = user.child("points").value.toString().toInt()
-        )
+        return try {
+            User(
+                email = user.child("email").getValue(String::class.java)!!,
+                username = user.child("username").getValue(String::class.java)!!,
+                name = user.child("name").getValue(String::class.java)!!,
+                phone = user.child("phone").getValue(String::class.java)!!,
+                photo = user.child("photo").getValue(String::class.java)!!,
+                points = user.child("points").getValue(Int::class.java)!!
+            )
+        } catch (e: NullPointerException) {
+            throw IllegalArgumentException("One or more required fields are missing")
+        }
     }
 
     private val _users = MutableLiveData<List<User>>()
